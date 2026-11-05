@@ -13,6 +13,7 @@ await build({
   minify: true,
   sourcemap: true,
   format: "esm",
+  jsx: "automatic",
   target: ["es2020"],
   loader: { ".js": "jsx", ".jsx": "jsx", ".css": "css" },
 });
