@@ -19,6 +19,11 @@ await build({
 });
 await cp(path.join(root, "public"), out, { recursive: true });
 await cp(path.join(root, "index.html"), path.join(out, "index.html"));
-const fallback = await readFile(path.join(out, "index.html"), "utf8");
-await writeFile(path.join(out, "404.html"), fallback);
+const buildVersion = process.env.GITHUB_SHA || Date.now().toString(36);
+const html = (await readFile(path.join(out, "index.html"), "utf8"))
+  .replace("./assets/app.css", `./assets/app.css?v=${buildVersion}`)
+  .replace("./config.js", `./config.js?v=${buildVersion}`)
+  .replace("./assets/app.js", `./assets/app.js?v=${buildVersion}`);
+await writeFile(path.join(out, "index.html"), html);
+await writeFile(path.join(out, "404.html"), html);
 console.log("LabFlow build complete: dist/");
