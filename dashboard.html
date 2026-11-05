@@ -1,0 +1,2528 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Classroom Buzz — Dashboard</title>
+    <script>
+      (() => {
+        "use strict";
+
+        // Chặn menu chuột phải
+        document.addEventListener("contextmenu", (event) => {
+          event.preventDefault();
+        });
+
+        // Chặn các phím tắt DevTools / xem mã nguồn phổ biến
+        document.addEventListener(
+          "keydown",
+          (event) => {
+            const key = (event.key || "").toLowerCase();
+
+            const devToolsShortcut =
+              event.key === "F12" ||
+              (event.ctrlKey &&
+                event.shiftKey &&
+                ["i", "j", "c"].includes(key)) ||
+              (event.ctrlKey && key === "u") ||
+              (event.metaKey && event.altKey && ["i", "j", "c"].includes(key));
+
+            if (devToolsShortcut) {
+              event.preventDefault();
+              event.stopPropagation();
+            }
+          },
+          true,
+        );
+      })();
+    </script>
+    <style>
+      :root {
+        --bg: #07101d;
+        --panel: #101d30;
+        --line: #263750;
+        --muted: #9fb0c8;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        height: 100%;
+      }
+      body {
+        margin: 0;
+        background: radial-gradient(ellipse at top, #17345a 0, #07101d 58%);
+        color: #f8fafc;
+        font-family:
+          Inter,
+          system-ui,
+          Segoe UI,
+          sans-serif;
+        padding: 24px;
+      }
+      main {
+        max-width: 1200px;
+        margin: auto;
+      }
+      .top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        flex-wrap: wrap;
+        margin-bottom: 22px;
+      }
+      .eyebrow {
+        font-size: 12px;
+        letter-spacing: 2px;
+        color: #93c5fd;
+        font-weight: 800;
+      }
+      .top h1 {
+        margin: 5px 0;
+        font-size: clamp(26px, 4vw, 40px);
+      }
+      .muted {
+        color: var(--muted);
+      }
+      .panel {
+        background: rgba(16, 29, 48, 0.94);
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        padding: 18px;
+        margin-bottom: 18px;
+      }
+      .controls {
+        display: grid;
+        grid-template-columns: 1.2fr 1fr 1fr;
+        gap: 12px;
+        align-items: end;
+      }
+      .field label {
+        display: block;
+        color: var(--muted);
+        font-size: 13px;
+        margin-bottom: 7px;
+      }
+      .field input {
+        width: 100%;
+        padding: 12px;
+        background: #071525;
+        border: 1px solid #344760;
+        border-radius: 10px;
+        color: white;
+        font-size: 15px;
+      }
+      button {
+        border: 0;
+        border-radius: 10px;
+        padding: 12px 15px;
+        font-weight: 800;
+        cursor: pointer;
+        color: white;
+        background: #2563eb;
+      }
+      button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+      .btn-green {
+        background: #15803d;
+      }
+      .btn-red {
+        background: #b91c1c;
+      }
+      .btn-gray {
+        background: #334155;
+      }
+      .evaluation-toggle-control {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-top: 14px;
+        padding: 12px 14px;
+        border: 1px solid #36516f;
+        border-radius: 12px;
+        background: #0b1728;
+        cursor: pointer;
+        font-weight: 800;
+      }
+      .evaluation-toggle-control input {
+        width: 20px;
+        height: 20px;
+        accent-color: #22c55e;
+        cursor: pointer;
+      }
+      .evaluation-toggle-control small {
+        color: #fca5a5;
+        font-weight: 700;
+        margin-left: auto;
+      }
+      .evaluation-toggle-control.is-on small {
+        color: #86efac;
+      }
+      .btn-row {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-top: 12px;
+      }
+      .status {
+        font-size: 13px;
+        margin-top: 12px;
+        color: var(--muted);
+      }
+      .live {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        color: #86efac;
+        font-weight: 800;
+        font-size: 13px;
+      }
+      .dot {
+        width: 8px;
+        height: 8px;
+        background: #22c55e;
+        border-radius: 50%;
+        box-shadow: 0 0 10px #22c55e;
+      }
+      .lanes {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 14px;
+      }
+      .lane {
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        overflow: hidden;
+        background: #0b1728;
+      }
+      .lane-head {
+        padding: 16px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .lane-head h2 {
+        font-size: 18px;
+        margin: 0;
+      }
+      .lane-head .count {
+        font-size: 26px;
+        font-weight: 900;
+      }
+      .lane1 .lane-head {
+        background: #173b68;
+      }
+      .lane2 .lane-head {
+        background: #14532d;
+      }
+      .lane3 .lane-head {
+        background: #7c2d12;
+      }
+      /* .teams {
+              padding: 10px;
+              display: grid;
+              grid-template-columns: repeat(2, 1fr);
+              gap: 8px;
+            } */
+      .teams {
+        padding: 10px;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-rows: repeat(3, auto);
+        gap: 8px;
+      }
+      .team {
+        min-height: 74px;
+        padding: 10px;
+        border: 1px solid #293a52;
+        border-radius: 11px;
+        background: #111f32;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 4px;
+      }
+      .team.done {
+        border-color: #4ade80;
+        background: #103322;
+      }
+      .team.active {
+        outline: 3px solid #facc15;
+        outline-offset: 2px;
+        box-shadow: 0 0 0 5px rgb(250 204 21 / 18%);
+      }
+      .team strong {
+        font-size: 14px;
+      }
+      .team small {
+        color: var(--muted);
+        font-size: 11px;
+      }
+      .team.done small {
+        color: #86efac;
+      }
+      .feed h2 {
+        margin: 0 0 12px;
+      }
+      .event {
+        display: grid;
+        grid-template-columns: 42px 1fr auto;
+        align-items: center;
+        gap: 12px;
+        padding: 13px 0;
+        border-top: 1px solid var(--line);
+      }
+      .rank {
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+        background: #23354d;
+        display: grid;
+        place-items: center;
+        font-weight: 900;
+      }
+      .event:first-of-type .rank {
+        background: #eab308;
+        color: #201600;
+      }
+      .event strong {
+        display: block;
+      }
+      .event small {
+        color: var(--muted);
+      }
+      .empty {
+        padding: 24px;
+        text-align: center;
+        color: var(--muted);
+      }
+      .banner {
+        display: none;
+        border: 1px solid #60a5fa;
+        background: #17365b;
+        padding: 16px;
+        border-radius: 14px;
+        margin-bottom: 16px;
+        font-size: clamp(18px, 3vw, 26px);
+        font-weight: 900;
+      }
+      .banner.show {
+        display: block;
+        animation: pop 0.3s ease;
+      }
+      @keyframes pop {
+        from {
+          transform: scale(0.98);
+          opacity: 0.4;
+        }
+        to {
+          transform: scale(1);
+          opacity: 1;
+        }
+      }
+      @media (max-width: 800px) {
+        .lanes {
+          grid-template-columns: 1fr;
+        }
+        .controls {
+          grid-template-columns: 1fr;
+        }
+        .team {
+          min-height: 60px;
+        }
+      }
+
+      /* Tìm đến các dòng này trong mã CSS của bạn và bổ sung thuộc tính order */
+      .lane1 {
+        order: 3; /* Chuyển dãy 1 xuống vị trí thứ 3 */
+      }
+
+      .lane2 {
+        order: 2; /* Giữ dãy 2 ở vị trí thứ 2 */
+      }
+
+      .lane3 {
+        order: 1; /* Chuyển dãy 3 lên vị trí thứ 1 */
+      }
+
+      /* Các đoạn mã background cũ của bạn giữ nguyên */
+      .lane1 .lane-head {
+        background: #173b68;
+      }
+      .lane2 .lane-head {
+        background: #14532d;
+      }
+      .lane3 .lane-head {
+        background: #7c2d12;
+      }
+      /* Tìm đến các dòng này trong mã CSS của bạn và bổ sung thuộc tính order */
+      .lane1 {
+        order: 3; /* Chuyển dãy 1 xuống vị trí thứ 3 */
+      }
+
+      .lane2 {
+        order: 2; /* Giữ dãy 2 ở vị trí thứ 2 */
+      }
+
+      .lane3 {
+        order: 1; /* Chuyển dãy 3 lên vị trí thứ 1 */
+      }
+
+      /* Các đoạn mã background cũ của bạn giữ nguyên */
+      .lane1 .lane-head {
+        background: #173b68;
+      }
+      .lane2 .lane-head {
+        background: #14532d;
+      }
+      .lane3 .lane-head {
+        background: #7c2d12;
+      }
+      /* Lớp pháo hoa phủ toàn màn hình */
+      #fireworksCanvas {
+        position: fixed;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        z-index: 9999;
+      }
+
+      /* Nút mở thanh công cụ */
+      #sidebarToggle {
+        position: fixed;
+        top: 18px;
+        left: 18px;
+        z-index: 1001;
+        width: 48px;
+        height: 48px;
+        padding: 0;
+        border: 1px solid #3b82f6;
+        border-radius: 12px;
+        background: #142a45;
+        color: white;
+        font-size: 25px;
+        cursor: pointer;
+        box-shadow: 0 5px 20px #0005;
+      }
+
+      /* Lớp nền mờ */
+      #sidebarOverlay {
+        position: fixed;
+        inset: 0;
+        z-index: 1002;
+        background: rgb(0 0 0 / 55%);
+        opacity: 0;
+        visibility: hidden;
+        transition:
+          opacity 0.3s,
+          visibility 0.3s;
+      }
+
+      #sidebarOverlay.show {
+        opacity: 1;
+        visibility: visible;
+      }
+
+      /* Thanh công cụ trượt từ trái sang */
+      #controlSidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        z-index: 1003;
+        width: min(430px, 92vw);
+        height: 100dvh;
+        overflow-y: auto;
+        margin: 0;
+        padding: 24px;
+        padding-top: 20px;
+        border: 1px solid #263750;
+        border-radius: 0 18px 18px 0;
+        background: #0b1728;
+        box-shadow: 15px 0 45px #0006;
+
+        transform: translateX(-105%);
+        visibility: hidden;
+        transition:
+          transform 0.3s ease,
+          visibility 0.3s;
+      }
+
+      #controlSidebar.open {
+        transform: translateX(0);
+        visibility: visible;
+      }
+
+      .sidebar-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 20px;
+        padding-bottom: 14px;
+        border-bottom: 1px solid #263750;
+      }
+
+      .sidebar-head h2 {
+        margin: 0;
+        font-size: 20px;
+      }
+
+      #closeSidebar {
+        flex-shrink: 0;
+        width: 40px;
+        height: 40px;
+        padding: 0;
+        background: #334155;
+        font-size: 24px;
+      }
+
+      #controlSidebar .controls {
+        grid-template-columns: 1fr;
+      }
+
+      #controlSidebar .btn-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+      }
+
+      #controlSidebar .btn-row button {
+        min-height: 46px;
+      }
+
+      #controlSidebar .status {
+        line-height: 1.6;
+        overflow-wrap: anywhere;
+      }
+
+      @media (max-width: 480px) {
+        #controlSidebar {
+          padding: 18px;
+        }
+
+        #controlSidebar .btn-row {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      .submission-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 12px;
+        margin: 14px 0 24px;
+      }
+      .submission-card {
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 16px;
+        background: #0b1728;
+        overflow-wrap: anywhere;
+      }
+      .submission-card h3 {
+        margin: 0 0 8px;
+      }
+      .submission-card p {
+        white-space: pre-wrap;
+        line-height: 1.55;
+        margin: 10px 0;
+      }
+      .submission-card a {
+        color: #7dd3fc;
+        overflow-wrap: anywhere;
+      }
+      .submission-meta {
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .eval-toolbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-bottom: 18px;
+      }
+
+      .eval-summary {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 10px;
+        margin-bottom: 24px;
+      }
+
+      .eval-stat {
+        padding: 16px;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: #0b1728;
+      }
+
+      .eval-stat strong {
+        display: block;
+        font-size: 25px;
+        margin-top: 8px;
+      }
+
+      .eval-stat span {
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      .eval-criteria,
+      .eval-groups {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+        margin-bottom: 24px;
+      }
+
+      .eval-item {
+        padding: 14px;
+        background: #0b1728;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        min-width: 0;
+      }
+
+      .eval-item strong {
+        display: block;
+        margin-bottom: 8px;
+      }
+
+      .eval-bar {
+        height: 9px;
+        border-radius: 99px;
+        background: #263750;
+        overflow: hidden;
+        margin: 10px 0;
+      }
+
+      .eval-bar > div {
+        height: 100%;
+        border-radius: inherit;
+        background: #22c55e;
+        transition: width 0.25s;
+      }
+
+      .eval-detail {
+        padding: 14px 0;
+        border-top: 1px solid var(--line);
+      }
+
+      .eval-detail-head {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+
+      .eval-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 7px;
+        margin-top: 10px;
+      }
+
+      .eval-tag {
+        padding: 5px 9px;
+        border-radius: 8px;
+        font-size: 12px;
+        background: #123d2a;
+        color: #86efac;
+      }
+
+      .eval-tag.no {
+        background: #3b2028;
+        color: #fca5a5;
+      }
+
+      .eval-detail small {
+        color: var(--muted);
+      }
+
+      @media (max-width: 700px) {
+        .eval-summary {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .eval-criteria,
+        .eval-groups {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      /* Nền  */
+
+      /* ===== CYBER ARENA BACKGROUND ===== */
+
+      body {
+        background:
+          radial-gradient(
+            ellipse at 15% 15%,
+            rgba(0, 153, 255, 0.18),
+            transparent 42%
+          ),
+          radial-gradient(
+            ellipse at 85% 25%,
+            rgba(139, 92, 246, 0.18),
+            transparent 42%
+          ),
+          radial-gradient(
+            ellipse at 50% 100%,
+            rgba(0, 255, 204, 0.1),
+            transparent 48%
+          ),
+          #050b16;
+        background-size: 180% 180%;
+        animation: cyberBackground 16s ease-in-out infinite alternate;
+      }
+
+      @keyframes cyberBackground {
+        0% {
+          background-position: 0% 0%;
+        }
+        50% {
+          background-position: 100% 50%;
+        }
+        100% {
+          background-position: 40% 100%;
+        }
+      }
+
+      /* Lưới công nghệ phủ nền */
+      body::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        z-index: -1;
+        pointer-events: none;
+
+        background-image:
+          linear-gradient(rgba(56, 189, 248, 0.045) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(56, 189, 248, 0.045) 1px, transparent 1px);
+
+        background-size: 42px 42px;
+        mask-image: linear-gradient(to bottom, black, transparent 90%);
+      }
+
+      /* Bảng kính công nghệ */
+      .panel,
+      .lane {
+        border-color: rgba(56, 189, 248, 0.28);
+        box-shadow:
+          0 0 22px rgba(14, 165, 233, 0.06),
+          inset 0 0 20px rgba(56, 189, 248, 0.025);
+        transition:
+          border-color 0.3s ease,
+          box-shadow 0.3s ease;
+      }
+
+      .panel:hover,
+      .lane:hover {
+        border-color: rgba(56, 189, 248, 0.5);
+        box-shadow: 0 0 24px rgba(14, 165, 233, 0.12);
+      }
+
+      /* Hiệu ứng phát sáng khi nhóm hoàn thành */
+      .team.done {
+        border-color: #4ade80;
+        background: linear-gradient(
+          135deg,
+          rgba(20, 83, 45, 0.95),
+          rgba(6, 40, 35, 0.95)
+        );
+        box-shadow:
+          0 0 12px rgba(74, 222, 128, 0.16),
+          inset 0 0 12px rgba(74, 222, 128, 0.06);
+      }
+
+      /* Nhóm vừa bấm chuông */
+      .team.active {
+        outline: 2px solid #facc15;
+        outline-offset: 2px;
+        animation: teamPulse 0.65s ease-in-out 3;
+      }
+
+      @keyframes teamPulse {
+        0%,
+        100% {
+          box-shadow: 0 0 8px rgba(250, 204, 21, 0.2);
+        }
+        50% {
+          box-shadow:
+            0 0 28px rgba(250, 204, 21, 0.8),
+            inset 0 0 18px rgba(250, 204, 21, 0.2);
+        }
+      }
+
+      /* Banner thông báo */
+      .banner.show {
+        border-color: #67e8f9;
+        background: linear-gradient(
+          110deg,
+          rgba(8, 47, 73, 0.98),
+          rgba(30, 41, 90, 0.98),
+          rgba(8, 47, 73, 0.98)
+        );
+        background-size: 200% 100%;
+        animation:
+          pop 0.3s ease,
+          cyberBanner 3s linear infinite;
+        box-shadow:
+          0 0 28px rgba(34, 211, 238, 0.28),
+          inset 0 0 20px rgba(34, 211, 238, 0.08);
+      }
+
+      @keyframes cyberBanner {
+        from {
+          background-position: 0% 50%;
+        }
+        to {
+          background-position: 200% 50%;
+        }
+      }
+
+      /* Tôn trọng cài đặt giảm chuyển động */
+      @media (prefers-reduced-motion: reduce) {
+        body,
+        .banner.show,
+        .team.active {
+          animation: none !important;
+        }
+
+        *,
+        *::before,
+        *::after {
+          scroll-behavior: auto !important;
+          transition-duration: 0.01ms !important;
+        }
+      }
+
+      /* end Nền  */
+
+      /* ==========================================
+   CYBER ARENA PRO — COMPETITION MODE
+   Dán ở cuối thẻ <style> hiện tại
+========================================== */
+
+      :root {
+        --neon-blue: #38bdf8;
+        --neon-cyan: #22d3ee;
+        --neon-purple: #a78bfa;
+        --neon-gold: #facc15;
+        --neon-green: #4ade80;
+      }
+
+      /* 1. Nền đấu trường sâu và có chiều sâu */
+      body {
+        background-color: #030712;
+        background-image:
+          radial-gradient(
+            ellipse at 50% -15%,
+            rgba(37, 99, 235, 0.28),
+            transparent 55%
+          ),
+          radial-gradient(
+            ellipse at 0% 50%,
+            rgba(8, 145, 178, 0.12),
+            transparent 45%
+          ),
+          radial-gradient(
+            ellipse at 100% 75%,
+            rgba(124, 58, 237, 0.15),
+            transparent 45%
+          ),
+          linear-gradient(180deg, #071225, #030712 80%);
+        background-attachment: fixed;
+      }
+
+      /* 2. Tiêu đề cuộc thi */
+      .top h1 {
+        color: #fff;
+        letter-spacing: -1px;
+        text-shadow:
+          0 0 8px rgba(56, 189, 248, 0.65),
+          0 0 28px rgba(56, 189, 248, 0.28);
+        animation: titleGlow 4s ease-in-out infinite alternate;
+      }
+
+      .eyebrow {
+        color: var(--neon-cyan);
+        text-shadow: 0 0 12px rgba(34, 211, 238, 0.5);
+      }
+
+      @keyframes titleGlow {
+        from {
+          text-shadow: 0 0 8px rgba(56, 189, 248, 0.4);
+        }
+        to {
+          text-shadow:
+            0 0 12px rgba(56, 189, 248, 0.8),
+            0 0 35px rgba(56, 189, 248, 0.4);
+        }
+      }
+
+      /* 3. Viền kính neon cho các bảng */
+      .panel,
+      .lane {
+        position: relative;
+        isolation: isolate;
+        border: 1px solid rgba(56, 189, 248, 0.32);
+        background: rgba(7, 18, 37, 0.88);
+        box-shadow:
+          0 12px 35px rgba(0, 0, 0, 0.24),
+          0 0 18px rgba(14, 165, 233, 0.07),
+          inset 0 0 25px rgba(56, 189, 248, 0.025);
+        backdrop-filter: blur(12px);
+        transition:
+          border-color 0.25s ease,
+          box-shadow 0.25s ease,
+          transform 0.25s ease;
+      }
+
+      .panel:hover,
+      .lane:hover {
+        border-color: rgba(34, 211, 238, 0.65);
+        box-shadow:
+          0 12px 40px rgba(0, 0, 0, 0.32),
+          0 0 25px rgba(34, 211, 238, 0.13);
+      }
+
+      /* 4. Header mỗi dãy giống khu vực thi đấu */
+      .lane-head {
+        position: relative;
+        overflow: hidden;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.13);
+      }
+
+      .lane-head::after {
+        content: "";
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        left: -70%;
+        width: 45%;
+        background: linear-gradient(
+          90deg,
+          transparent,
+          rgba(255, 255, 255, 0.13),
+          transparent
+        );
+        transform: skewX(-22deg);
+        animation: laneSweep 7s ease-in-out infinite;
+        pointer-events: none;
+      }
+
+      .lane1 .lane-head {
+        background: linear-gradient(115deg, #102d59, #155e9a, #102d59);
+      }
+
+      .lane2 .lane-head {
+        background: linear-gradient(115deg, #103b2c, #15803d, #103b2c);
+      }
+
+      .lane3 .lane-head {
+        background: linear-gradient(115deg, #57210f, #c2410c, #57210f);
+      }
+
+      @keyframes laneSweep {
+        0%,
+        65% {
+          left: -70%;
+        }
+        100% {
+          left: 140%;
+        }
+      }
+
+      .lane-head h2 {
+        letter-spacing: 1px;
+        text-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
+      }
+
+      .lane-head .count {
+        color: #fff;
+        font-variant-numeric: tabular-nums;
+        text-shadow:
+          0 0 10px rgba(255, 255, 255, 0.25),
+          0 0 20px rgba(56, 189, 248, 0.3);
+      }
+
+      /* 5. Thẻ nhóm — nền nổi và hiệu ứng quét sáng */
+      .team {
+        position: relative;
+        isolation: isolate;
+        overflow: hidden;
+        min-height: 82px;
+        border: 1px solid rgba(100, 116, 139, 0.35);
+        border-radius: 12px;
+        background: linear-gradient(145deg, #111f34, #081322);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
+        transition:
+          transform 0.22s ease,
+          border-color 0.22s ease,
+          box-shadow 0.22s ease,
+          background 0.22s ease;
+      }
+
+      .team::before {
+        content: "";
+        position: absolute;
+        z-index: -1;
+        inset: 0;
+        background: linear-gradient(
+          110deg,
+          transparent 25%,
+          rgba(56, 189, 248, 0.1) 48%,
+          transparent 70%
+        );
+        transform: translateX(-120%);
+        transition: transform 0.55s ease;
+        pointer-events: none;
+      }
+
+      .team:hover {
+        transform: translateY(-3px);
+        border-color: var(--neon-blue);
+        box-shadow:
+          0 8px 20px rgba(0, 0, 0, 0.24),
+          0 0 15px rgba(56, 189, 248, 0.13);
+      }
+
+      .team:hover::before {
+        transform: translateX(120%);
+      }
+
+      .team strong {
+        position: relative;
+        color: #f0f9ff;
+        font-size: 14px;
+        letter-spacing: 0.15px;
+      }
+
+      .team small {
+        position: relative;
+        color: #94a9c4;
+      }
+
+      /* 6. Nhóm đã bấm chuông */
+      .team.done {
+        border-color: rgba(74, 222, 128, 0.8);
+        background: linear-gradient(135deg, #10442e, #09291f);
+        box-shadow:
+          0 0 12px rgba(74, 222, 128, 0.13),
+          inset 0 0 20px rgba(74, 222, 128, 0.055);
+      }
+
+      .team.done strong {
+        color: #bbf7d0;
+      }
+
+      .team.done small {
+        color: #86efac;
+      }
+
+      /* 7. Nhóm vừa bấm chuông — hiệu ứng tâm điểm */
+      .team.active {
+        z-index: 2;
+        border-color: var(--neon-gold);
+        outline: 2px solid rgba(250, 204, 21, 0.9);
+        outline-offset: 2px;
+        background: linear-gradient(135deg, #47330a, #1c2330);
+        animation: activeTeam 1s ease-in-out infinite;
+      }
+
+      .team.active strong {
+        color: #fef08a;
+        text-shadow: 0 0 12px rgba(250, 204, 21, 0.5);
+      }
+
+      @keyframes activeTeam {
+        0%,
+        100% {
+          box-shadow: 0 0 10px rgba(250, 204, 21, 0.25);
+        }
+        50% {
+          box-shadow:
+            0 0 28px rgba(250, 204, 21, 0.7),
+            inset 0 0 20px rgba(250, 204, 21, 0.12);
+        }
+      }
+
+      /* 8. Banner thông báo bấm chuông */
+      .banner.show {
+        position: relative;
+        overflow: hidden;
+        border: 1px solid #67e8f9;
+        border-radius: 16px;
+        background: linear-gradient(110deg, #082f49, #312e81, #164e63, #082f49);
+        background-size: 250% 100%;
+        color: #fff;
+        text-align: center;
+        letter-spacing: 0.5px;
+        text-shadow: 0 0 15px rgba(34, 211, 238, 0.55);
+        box-shadow:
+          0 0 18px rgba(34, 211, 238, 0.25),
+          0 0 55px rgba(99, 102, 241, 0.12),
+          inset 0 0 22px rgba(34, 211, 238, 0.08);
+        animation:
+          pop 0.3s ease,
+          bannerFlow 3s linear infinite;
+      }
+
+      @keyframes bannerFlow {
+        from {
+          background-position: 0% 50%;
+        }
+        to {
+          background-position: 250% 50%;
+        }
+      }
+
+      /* 9. Bảng thứ tự bấm chuông */
+      .feed > h2 {
+        color: #e0f2fe;
+        text-shadow: 0 0 12px rgba(56, 189, 248, 0.2);
+      }
+
+      .event {
+        transition:
+          background 0.2s ease,
+          padding 0.2s ease;
+      }
+
+      .event:hover {
+        padding-left: 8px;
+        padding-right: 8px;
+        background: rgba(56, 189, 248, 0.045);
+      }
+
+      .rank {
+        border: 1px solid rgba(148, 163, 184, 0.15);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+      }
+
+      .event:first-of-type .rank {
+        background: linear-gradient(135deg, #fef08a, #eab308);
+        box-shadow: 0 0 18px rgba(234, 179, 8, 0.25);
+      }
+
+      /* 10. Các nút điều khiển */
+      button {
+        position: relative;
+        overflow: hidden;
+        transition:
+          transform 0.18s ease,
+          filter 0.18s ease,
+          box-shadow 0.18s ease;
+      }
+
+      button:hover:not(:disabled) {
+        filter: brightness(1.15);
+        transform: translateY(-2px);
+        box-shadow: 0 5px 18px rgba(37, 99, 235, 0.22);
+      }
+
+      button:active:not(:disabled) {
+        transform: translateY(0) scale(0.98);
+      }
+
+      .btn-green:hover:not(:disabled) {
+        box-shadow: 0 5px 20px rgba(34, 197, 94, 0.25);
+      }
+
+      .btn-red:hover:not(:disabled) {
+        box-shadow: 0 5px 20px rgba(239, 68, 68, 0.25);
+      }
+
+      /* 11. Trạng thái kết nối realtime */
+      .live {
+        padding: 10px 14px;
+        border: 1px solid rgba(74, 222, 128, 0.22);
+        border-radius: 99px;
+        background: rgba(20, 83, 45, 0.17);
+        box-shadow: 0 0 16px rgba(34, 197, 94, 0.05);
+      }
+
+      .dot {
+        flex-shrink: 0;
+        animation: livePulse 1.8s ease-in-out infinite;
+      }
+
+      @keyframes livePulse {
+        0%,
+        100% {
+          box-shadow: 0 0 5px #22c55e;
+          opacity: 1;
+        }
+        50% {
+          box-shadow: 0 0 15px #22c55e;
+          opacity: 0.65;
+        }
+      }
+
+      /* 12. Bài nộp — thẻ dữ liệu */
+      .submission-card {
+        border-color: rgba(56, 189, 248, 0.2);
+        background: linear-gradient(145deg, #0d1c30, #081322);
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.15);
+        transition:
+          transform 0.22s ease,
+          border-color 0.22s ease,
+          box-shadow 0.22s ease;
+      }
+
+      .submission-card:hover {
+        transform: translateY(-3px);
+        border-color: rgba(56, 189, 248, 0.55);
+        box-shadow: 0 10px 28px rgba(14, 165, 233, 0.09);
+      }
+
+      .submission-card h3 {
+        color: #bae6fd;
+      }
+
+      .submission-card a {
+        text-decoration: none;
+        font-weight: 700;
+      }
+
+      .submission-card a:hover {
+        color: #fff;
+        text-decoration: underline;
+      }
+
+      /* 13. Dashboard đánh giá */
+      .eval-stat,
+      .eval-item {
+        background: linear-gradient(145deg, #101f34, #091526);
+        border-color: rgba(56, 189, 248, 0.2);
+        transition:
+          border-color 0.2s ease,
+          box-shadow 0.2s ease;
+      }
+
+      .eval-stat:hover,
+      .eval-item:hover {
+        border-color: rgba(56, 189, 248, 0.48);
+        box-shadow: 0 0 18px rgba(56, 189, 248, 0.06);
+      }
+
+      .eval-stat strong {
+        color: #e0f2fe;
+        text-shadow: 0 0 12px rgba(56, 189, 248, 0.18);
+      }
+
+      .eval-bar {
+        background: #1b2b40;
+        box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.35);
+      }
+
+      .eval-bar > div {
+        background: linear-gradient(90deg, #16a34a, #4ade80, #a7f3d0);
+        box-shadow: 0 0 10px rgba(74, 222, 128, 0.18);
+      }
+
+      /* 14. Sidebar điều khiển giáo viên */
+      #controlSidebar {
+        border-color: rgba(56, 189, 248, 0.3);
+        background: linear-gradient(160deg, #0d1b30, #050c18);
+        box-shadow: 15px 0 55px rgba(0, 0, 0, 0.5);
+      }
+
+      .sidebar-head h2 {
+        color: #e0f2fe;
+        text-shadow: 0 0 12px rgba(56, 189, 248, 0.15);
+      }
+
+      #sidebarToggle {
+        border-color: rgba(56, 189, 248, 0.6);
+        box-shadow:
+          0 5px 20px rgba(0, 0, 0, 0.3),
+          0 0 15px rgba(56, 189, 248, 0.12);
+        transition:
+          transform 0.2s ease,
+          box-shadow 0.2s ease;
+      }
+
+      #sidebarToggle:hover {
+        box-shadow: 0 0 24px rgba(56, 189, 248, 0.3);
+      }
+
+      /* 15. Canvas pháo hoa luôn nằm trên cùng */
+      #fireworksCanvas {
+        pointer-events: none;
+        z-index: 9999;
+      }
+
+      /* 16. Responsive và hỗ trợ giảm chuyển động */
+      @media (max-width: 800px) {
+        .team {
+          min-height: 70px;
+        }
+
+        .top h1 {
+          letter-spacing: -0.5px;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .top h1,
+        .lane-head::after,
+        .team.active,
+        .banner.show,
+        .dot {
+          animation: none !important;
+        }
+
+        .panel,
+        .lane,
+        .team,
+        .button,
+        button,
+        .submission-card {
+          transition: none !important;
+        }
+      }
+
+      #buzzSpan {
+        display: inline-block;
+        transform-origin: top center;
+        animation: ringBuzzSpan 1.2s ease-in-out infinite;
+      }
+
+      @keyframes ringBuzzSpan {
+        0%,
+        100% {
+          transform: rotate(0);
+        }
+        10%,
+        30%,
+        50%,
+        70% {
+          transform: rotate(15deg);
+        }
+        20%,
+        40%,
+        60%,
+        80% {
+          transform: rotate(-15deg);
+        }
+        90% {
+          transform: rotate(0);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <button
+      id="sidebarToggle"
+      type="button"
+      aria-label="Mở thanh công cụ"
+      aria-controls="controlSidebar"
+      aria-expanded="false"
+    >
+      ☰
+    </button>
+
+    <div id="sidebarOverlay"></div>
+    <main>
+      <header class="top">
+        <div>
+          <div class="eyebrow">LIVE CLASSROOM COMPETITION</div>
+          <h1 style="text-align: center;"><span id="buzzSpan">🔔</span> C++ LOOP - CHALLENGE</h1>
+          <!-- <div class="muted">Dashboard giáo viên</div> -->
+        </div>
+        <div class="live">
+          <span class="dot"></span><span id="liveText">Chưa kết nối</span>
+        </div>
+      </header>
+      <!-- <section class="panel"> -->
+      <aside id="controlSidebar" aria-label="Thanh công cụ giáo viên">
+        <div class="sidebar-head">
+          <h2>⚙️ Điều khiển lớp học</h2>
+          <button
+            id="closeSidebar"
+            type="button"
+            aria-label="Đóng thanh công cụ"
+          >
+            ×
+          </button>
+        </div>
+        <div class="controls">
+          <div class="field">
+            <label for="roomCode">Mã lớp / mã phòng</label
+            ><input id="roomCode" value="FOR2026" maxlength="30" />
+          </div>
+          <div class="field">
+            <label for="teacherPin">Mã quản lý (để tránh thao tác nhầm)</label
+            ><input
+              id="teacherPin"
+              type="password"
+              placeholder="Nhập mã quản lý"
+            />
+          </div>
+          <div class="field">
+            <label>Trạng thái vòng thi</label>
+            <div
+              id="roundState"
+              style="padding: 12px 0; font-weight: 800; color: #fbbf24"
+            >
+              Chưa tải vòng thi
+            </div>
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn-green" id="startBtn">▶ Bắt đầu / Vòng mới</button
+          ><button class="btn-red" id="closeBtn">■ Khóa vòng thi</button
+          ><button class="btn-gray" id="soundBtn">🔊 Bật âm thanh</button>
+          <button class="btn-gray" id="musicBtn">🎵 Tắt nhạc nền</button>
+
+          <button class="btn-gray" id="clearBtn">↻ Làm mới bảng</button>
+        </div>
+        <label class="evaluation-toggle-control" for="evaluationVisibleToggle">
+          <input type="checkbox" id="evaluationVisibleToggle" />
+          <span>Hiển thị form đánh giá</span>
+          <small id="evaluationToggleStatus">Đang tắt</small>
+        </label>
+        <div class="status" id="status">
+          Điền cấu hình Supabase trong config.js. Nhấn “Bật âm thanh” một lần để
+          trình duyệt cho phép phát tiếng.
+        </div>
+        <!-- </section> -->
+      </aside>
+
+      <div id="banner" class="banner"></div>
+      <canvas id="fireworksCanvas"></canvas>
+      <audio id="bgMusic" src="./sound.mp3" loop preload="auto"></audio>
+      <audio id="responseSound" src="./response.mp3" preload="auto"></audio>
+      <section class="lanes" id="lanes"></section>
+      <section style="margin-top: 20px" class="panel feed">
+        <h2>🏆 Thứ tự bấm chuông</h2>
+        <div id="feed">
+          <div class="empty">Chưa có nhóm nào bấm chuông.</div>
+        </div>
+      </section>
+
+      <section class="panel feed" id="submissionPanel">
+        <h2>📥 Bài nộp của các nhóm</h2>
+        <div class="muted" id="submissionRoundLabel">Chưa có vòng thi</div>
+        <div class="status" id="submissionDashboardStatus">
+          Đang chờ bài nộp.
+        </div>
+        <div id="submissionList" class="submission-grid">
+          <div class="empty">Chưa có nhóm nào nộp bài.</div>
+        </div>
+      </section>
+
+      <section class="panel feed" id="evaluationPanel">
+        <h2>📝 Đánh giá nhóm bạn</h2>
+
+        <div class="eval-toolbar">
+          <div>
+            <div class="muted">Vòng thi đang xem</div>
+            <strong id="evalRoundLabel">Chưa có vòng thi</strong>
+          </div>
+          <button class="btn-gray" id="refreshEvaluationsBtn">
+            ↻ Làm mới đánh giá
+          </button>
+        </div>
+
+        <div id="evaluationSummary" class="eval-summary"></div>
+
+        <h3>📊 Kết quả theo tiêu chí</h3>
+        <div id="evaluationCriteria" class="eval-criteria"></div>
+
+        <h3>🏅 Thống kê theo nhóm được đánh giá</h3>
+        <div id="evaluationGroups" class="eval-groups"></div>
+
+        <h3>📋 Chi tiết các lượt đánh giá</h3>
+        <div id="evaluationStatus" class="status">
+          Đang chờ dữ liệu đánh giá.
+        </div>
+        <div id="evaluationList"></div>
+      </section>
+    </main>
+    <script type="module">
+      import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+      import {
+        SUPABASE_URL,
+        SUPABASE_ANON_KEY,
+        TEACHER_PIN,
+      } from "./config.js";
+      const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      const $ = (id) => document.getElementById(id);
+
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+
+      import {
+        getFirestore,
+        collection,
+        query,
+        where,
+        onSnapshot,
+      } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+      import { firebaseConfig } from "./firebase-config.js";
+
+      const firebaseApp = initializeApp(firebaseConfig);
+      const db = getFirestore(firebaseApp);
+
+      // BAR
+
+      const sidebar = $("controlSidebar");
+      const sidebarToggle = $("sidebarToggle");
+      const sidebarOverlay = $("sidebarOverlay");
+      const closeSidebarBtn = $("closeSidebar");
+
+      function openSidebar() {
+        sidebar.classList.add("open");
+        sidebarOverlay.classList.add("show");
+        sidebarToggle.setAttribute("aria-expanded", "true");
+        sidebarToggle.setAttribute("aria-label", "Đóng thanh công cụ");
+        sidebarToggle.textContent = "×";
+      }
+
+      function closeSidebar() {
+        sidebar.classList.remove("open");
+        sidebarOverlay.classList.remove("show");
+        sidebarToggle.setAttribute("aria-expanded", "false");
+        sidebarToggle.setAttribute("aria-label", "Mở thanh công cụ");
+        sidebarToggle.textContent = "☰";
+      }
+
+      sidebarToggle.addEventListener("click", () => {
+        if (sidebar.classList.contains("open")) {
+          closeSidebar();
+        } else {
+          openSidebar();
+        }
+      });
+
+      closeSidebarBtn.addEventListener("click", closeSidebar);
+      sidebarOverlay.addEventListener("click", closeSidebar);
+
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") {
+          closeSidebar();
+        }
+      });
+
+      // END BAR
+
+      let currentRound = null,
+        channel = null,
+        events = [],
+        soundEnabled = false,
+        audioCtx = null,
+        roundBusy = false;
+      const laneNames = { 1: "DÃY 1", 2: "DÃY 2", 3: "DÃY 3" };
+      // Vị trí hiển thị theo sơ đồ lớp: mỗi số là nhóm toàn lớp (HS 2*n-1 và 2*n).
+      const laneOrder = {
+        1: [1, 2, 3, 4, 5, 6],
+        2: [7, 8, 9, 10, 11, 12],
+        3: [13, 14, 15, 16],
+      };
+      function globalGroup(lane, slot) {
+        return lane === 1 ? slot : lane === 2 ? slot + 6 : slot + 12;
+      }
+      function studentPair(group) {
+        return `${group * 2 - 1} – ${group * 2}`;
+      }
+      function setStatus(t) {
+        $("status").textContent = t;
+      }
+      function room() {
+        return $("roomCode").value.trim().toUpperCase();
+      }
+
+      let evaluationVisibilityChannel = null;
+      let updatingEvaluationVisibility = false;
+
+      function renderEvaluationVisibility(isVisible) {
+        const toggle = $("evaluationVisibleToggle");
+        const wrap = toggle.closest(".evaluation-toggle-control");
+        toggle.checked = Boolean(isVisible);
+        wrap.classList.toggle("is-on", Boolean(isVisible));
+        $("evaluationToggleStatus").textContent = isVisible
+          ? "ĐANG HIỂN THỊ"
+          : "ĐANG TẮT";
+      }
+
+      async function loadEvaluationVisibility() {
+        const roomCode = room();
+        if (!roomCode) {
+          renderEvaluationVisibility(false);
+          return;
+        }
+        const { data, error } = await supabase
+          .from("buzz_room_settings")
+          .select("evaluation_visible")
+          .eq("room_code", roomCode)
+          .maybeSingle();
+        if (error) throw error;
+        renderEvaluationVisibility(data?.evaluation_visible ?? false);
+      }
+
+      async function saveEvaluationVisibility(isVisible) {
+        if (updatingEvaluationVisibility) return;
+        if (!checkPin()) {
+          renderEvaluationVisibility(false);
+          return;
+        }
+        const roomCode = room();
+        if (!roomCode) {
+          setStatus("Vui lòng nhập mã lớp trước khi bật form đánh giá.");
+          renderEvaluationVisibility(false);
+          return;
+        }
+        updatingEvaluationVisibility = true;
+        $("evaluationVisibleToggle").disabled = true;
+        try {
+          const { error } = await supabase.from("buzz_room_settings").upsert(
+            {
+              room_code: roomCode,
+              evaluation_visible: Boolean(isVisible),
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: "room_code" },
+          );
+          if (error) throw error;
+          renderEvaluationVisibility(isVisible);
+          setStatus(
+            isVisible
+              ? "Đã bật form đánh giá trên màn hình học sinh."
+              : "Đã tắt form đánh giá trên màn hình học sinh.",
+          );
+        } catch (e) {
+          console.error(e);
+          await loadEvaluationVisibility().catch(() =>
+            renderEvaluationVisibility(false),
+          );
+          setStatus(
+            "Không cập nhật được trạng thái form đánh giá: " + e.message,
+          );
+        } finally {
+          updatingEvaluationVisibility = false;
+          $("evaluationVisibleToggle").disabled = false;
+        }
+      }
+
+      async function subscribeEvaluationVisibility() {
+        if (evaluationVisibilityChannel) {
+          await supabase.removeChannel(evaluationVisibilityChannel);
+          evaluationVisibilityChannel = null;
+        }
+        const roomCode = room();
+        if (!roomCode) return;
+        await loadEvaluationVisibility();
+        evaluationVisibilityChannel = supabase
+          .channel("evaluation-visibility-" + roomCode)
+          .on(
+            "postgres_changes",
+            {
+              event: "*",
+              schema: "public",
+              table: "buzz_room_settings",
+              filter: `room_code=eq.${roomCode}`,
+            },
+            (payload) => {
+              renderEvaluationVisibility(
+                payload.new?.evaluation_visible ?? false,
+              );
+            },
+          )
+          .subscribe();
+      }
+
+      function checkPin() {
+        if (TEACHER_PIN && $("teacherPin").value !== TEACHER_PIN) {
+          setStatus("Mã quản lý không đúng. Kiểm tra TEACHER_PIN");
+          return false;
+        }
+        return true;
+      }
+      /* function renderLanes() {
+        $("lanes").innerHTML = "";
+        for (let lane = 1; lane <= 3; lane++) {
+          const el = document.createElement("div");
+          el.className = `lane lane${lane}`;
+          el.innerHTML = `<div class="lane-head"><h2>${laneNames[lane]}</h2><div class="count" id="count${lane}">0/6</div></div><div class="teams" id="teams${lane}"></div>`;
+          $("lanes").appendChild(el);
+          for (let slot = 1; slot <= laneOrder[lane].length; slot++) {
+            const group = laneOrder[lane][slot - 1];
+            const t = document.createElement("div");
+            t.className = "team";
+            t.id = `team-${lane}-${slot}`;
+            t.innerHTML = `<strong>Nhóm ${group} · HS ${studentPair(group)}</strong><small>Chưa bấm chuông</small>`;
+            $(`teams${lane}`).appendChild(t);
+          }
+        }
+      }*/
+
+      function renderLanes() {
+        $("lanes").innerHTML = "";
+
+        for (let lane = 1; lane <= 3; lane++) {
+          const el = document.createElement("div");
+          el.className = `lane lane${lane}`;
+
+          el.innerHTML = `
+      <div class="lane-head">
+        <h2>${laneNames[lane]}</h2>
+        <div class="count" id="count${lane}">0/${laneOrder[lane].length}</div>
+      </div>
+      <div class="teams" id="teams${lane}"></div>
+    `;
+
+          $("lanes").appendChild(el);
+
+          const total = laneOrder[lane].length;
+          const half = total / 2;
+
+          for (let slot = 1; slot <= total; slot++) {
+            const group = laneOrder[lane][slot - 1];
+            const t = document.createElement("div");
+
+            t.className = "team";
+            t.id = `team-${lane}-${slot}`;
+
+            // Nhóm ở nửa đầu nằm cột phải.
+            // Nhóm ở nửa sau nằm cột trái.
+            const column = slot <= half ? 2 : 1;
+            const row = slot <= half ? slot : slot - half;
+
+            t.style.gridColumn = column;
+            t.style.gridRow = row;
+
+            t.innerHTML = `
+        <strong>Nhóm ${group} · HS ${studentPair(group)}</strong>
+        <small>Chưa bấm chuông</small>
+      `;
+
+            $(`teams${lane}`).appendChild(t);
+          }
+        }
+      }
+
+      function escapeHtml(s) {
+        return String(s).replace(
+          /[&<>"']/g,
+          (c) =>
+            ({
+              "&": "&amp;",
+              "<": "&lt;",
+              ">": "&gt;",
+              '"': "&quot;",
+              "'": "&#39;",
+            })[c],
+        );
+      }
+
+      let peerEvaluations = [];
+      let evaluationUnsubscribe = null;
+
+      const evaluationCriteriaDefinitions = [
+        {
+          key: "correctResult",
+          label: "Chương trình chạy đúng kết quả",
+        },
+        {
+          key: "initialization",
+          label: "Khởi tạo biến đếm",
+        },
+        {
+          key: "loopCondition",
+          label: "Điều kiện lặp",
+        },
+        {
+          key: "updateStep",
+          label: "Bước cập nhật biến đếm",
+        },
+      ];
+
+      function renderEvaluationDashboard() {
+        const list = $("evaluationList");
+        const summary = $("evaluationSummary");
+        const criteriaBox = $("evaluationCriteria");
+        const groupsBox = $("evaluationGroups");
+
+        const total = peerEvaluations.length;
+        const evaluatingGroups = new Set(
+          peerEvaluations.map((e) => Number(e.evaluatingGroup)),
+        );
+        const evaluatedGroups = new Set(
+          peerEvaluations.map((e) => Number(e.presentingGroup)),
+        );
+
+        summary.innerHTML = `
+    <div class="eval-stat">
+      <span>Tổng lượt đánh giá</span>
+      <strong>${total}</strong>
+    </div>
+    <div class="eval-stat">
+      <span>Nhóm đã gửi đánh giá</span>
+      <strong>${evaluatingGroups.size}/16</strong>
+    </div>
+    <div class="eval-stat">
+      <span>Nhóm đã được đánh giá</span>
+      <strong>${evaluatedGroups.size}/16</strong>
+    </div>
+    <div class="eval-stat">
+      <span>Tiêu chí đánh giá</span>
+      <strong>4</strong>
+    </div>
+  `;
+
+        // Thống kê số lượt được tick cho từng tiêu chí
+        criteriaBox.innerHTML = evaluationCriteriaDefinitions
+          .map((item) => {
+            const count = peerEvaluations.filter(
+              (e) => e.criteria?.[item.key] === true,
+            ).length;
+
+            const percent = total ? Math.round((count / total) * 100) : 0;
+
+            return `
+        <div class="eval-item">
+          <strong>${escapeHtml(item.label)}</strong>
+          <div>${count}/${total} lượt đánh giá</div>
+          <div class="eval-bar">
+            <div style="width:${percent}%"></div>
+          </div>
+          <small class="muted">${percent}% lượt đánh giá ghi nhận đạt</small>
+        </div>
+      `;
+          })
+          .join("");
+
+        // Thống kê theo nhóm được đánh giá
+        groupsBox.innerHTML = Array.from({ length: 16 }, (_, i) => i + 1)
+          .map((group) => {
+            const records = peerEvaluations.filter(
+              (e) => Number(e.presentingGroup) === group,
+            );
+
+            const count = records.length;
+
+            const stats = evaluationCriteriaDefinitions
+              .map((item) => {
+                const achieved = records.filter(
+                  (e) => e.criteria?.[item.key] === true,
+                ).length;
+
+                return `
+        <div style="margin-top:8px">
+          <small>${escapeHtml(item.label)}</small>
+          <div class="eval-bar">
+            <div style="width:${
+              count ? Math.round((achieved / count) * 100) : 0
+            }%"></div>
+          </div>
+          <small>${achieved}/${count} lượt</small>
+        </div>
+      `;
+              })
+              .join("");
+
+            return `
+      <div class="eval-item">
+        <strong>Nhóm ${group}</strong>
+        <div>${count} lượt đánh giá</div>
+        ${stats}
+      </div>
+    `;
+          })
+          .join("");
+
+        // Chi tiết từng lượt đánh giá
+        if (!total) {
+          list.innerHTML = `
+      <div class="empty">
+        Chưa có lượt đánh giá nào trong vòng thi này.
+      </div>
+    `;
+          return;
+        }
+
+        const sorted = [...peerEvaluations].sort((a, b) => {
+          const ta = a.createdAt?.toMillis?.() ?? 0;
+          const tb = b.createdAt?.toMillis?.() ?? 0;
+          return tb - ta;
+        });
+
+        list.innerHTML = sorted
+          .map((e, index) => {
+            const selected = evaluationCriteriaDefinitions.filter(
+              (item) => e.criteria?.[item.key] === true,
+            );
+
+            const notSelected = evaluationCriteriaDefinitions.filter(
+              (item) => e.criteria?.[item.key] !== true,
+            );
+
+            const timestamp = e.createdAt?.toDate?.();
+
+            const time = timestamp
+              ? timestamp.toLocaleString("vi-VN")
+              : "Đang cập nhật thời gian";
+
+            return `
+      <article class="eval-detail">
+        <div class="eval-detail-head">
+          <div>
+            <strong>
+              Nhóm ${Number(e.evaluatingGroup)}
+              → Nhóm ${Number(e.presentingGroup)}
+            </strong>
+            <br>
+            <small>${escapeHtml(time)}</small>
+          </div>
+          <span class="muted">Lượt ${index + 1}</span>
+        </div>
+
+        <div class="eval-tags">
+          ${selected
+            .map(
+              (item) => `
+            <span class="eval-tag">
+              ✓ ${escapeHtml(item.label)}
+            </span>
+          `,
+            )
+            .join("")}
+
+          ${notSelected
+            .map(
+              (item) => `
+            <span class="eval-tag no">
+              ○ ${escapeHtml(item.label)}
+            </span>
+          `,
+            )
+            .join("")}
+        </div>
+      </article>
+    `;
+          })
+          .join("");
+      }
+
+      let submissionsUnsubscribe = null;
+      function renderSubmissions(submissions) {
+        const list = $("submissionList");
+        if (!submissions.length) {
+          list.innerHTML =
+            '<div class="empty">Chưa có nhóm nào nộp bài ở vòng này.</div>';
+          return;
+        }
+        submissions.sort((a, b) => Number(a.group || 0) - Number(b.group || 0));
+        list.innerHTML = submissions
+          .map((item) => {
+            const group = Number(item.group) || 0;
+            const lane =
+              Number(item.lane) || (group <= 6 ? 1 : group <= 12 ? 2 : 3);
+            const submitted = item.submittedAt?.toDate
+              ? item.submittedAt.toDate().toLocaleString("vi-VN")
+              : "Thời gian chưa có";
+            const url = String(item.workUrl || "").trim();
+            let safeUrl = "";
+            try {
+              const parsed = new URL(url);
+              if (["http:", "https:"].includes(parsed.protocol))
+                safeUrl = parsed.href;
+            } catch (_) {}
+            return `<article class="submission-card">
+            <h3>Nhóm ${group} · Dãy ${lane}</h3>
+            <div class="submission-meta">HS ${studentPair(group)} · ${escapeHtml(submitted)}</div>
+            <p>${escapeHtml(item.answerText || "(Không có câu trả lời văn bản)")}</p>
+            ${safeUrl ? `<a href="${escapeHtml(safeUrl)}" target="_blank" rel="noopener noreferrer">🔗 Mở bài làm của nhóm</a>` : '<div class="submission-meta">Không đính kèm URL</div>'}
+          </article>`;
+          })
+          .join("");
+      }
+      function subscribeSubmissions() {
+        if (submissionsUnsubscribe) {
+          submissionsUnsubscribe();
+          submissionsUnsubscribe = null;
+        }
+        $("submissionList").innerHTML =
+          '<div class="empty">Đang tải bài nộp...</div>';
+        if (!currentRound) {
+          $("submissionRoundLabel").textContent = "Chưa có vòng thi";
+          $("submissionDashboardStatus").textContent =
+            "Chưa có vòng thi để hiển thị bài nộp.";
+          $("submissionList").innerHTML =
+            '<div class="empty">Chưa có vòng thi.</div>';
+          return;
+        }
+        const roomCode = room();
+        const roundId = String(currentRound.id);
+        $("submissionRoundLabel").textContent =
+          `${roomCode} · Vòng ${currentRound.is_open ? "đang mở" : "đã khóa"}`;
+        $("submissionDashboardStatus").textContent =
+          "Đang kết nối dữ liệu bài nộp Firebase...";
+        const submissionsQuery = query(
+          collection(db, "group_submissions"),
+          where("roomCode", "==", roomCode),
+          where("roundId", "==", roundId),
+        );
+        submissionsUnsubscribe = onSnapshot(
+          submissionsQuery,
+          (snapshot) => {
+            const items = snapshot.docs.map((item) => ({
+              id: item.id,
+              ...item.data(),
+            }));
+            renderSubmissions(items);
+            $("submissionDashboardStatus").textContent =
+              `Đã nhận ${items.length} bài nộp. Danh sách tự cập nhật khi có nhóm nộp bài mới.`;
+          },
+          (error) => {
+            console.error("Lỗi đọc bài nộp Firebase:", error);
+            $("submissionDashboardStatus").textContent =
+              "Không đọc được bài nộp. Kiểm tra Firebase Firestore Rules.";
+          },
+        );
+      }
+
+      function subscribeEvaluations() {
+        if (evaluationUnsubscribe) {
+          evaluationUnsubscribe();
+          evaluationUnsubscribe = null;
+        }
+
+        peerEvaluations = [];
+        renderEvaluationDashboard();
+
+        if (!currentRound) {
+          $("evalRoundLabel").textContent = "Chưa có vòng thi";
+          $("evaluationStatus").textContent =
+            "Chưa có vòng thi để tải đánh giá.";
+          return;
+        }
+
+        const roundId = String(currentRound.id);
+        const roomCode = room();
+
+        $("evalRoundLabel").textContent =
+          `${roomCode} · ${currentRound.is_open ? "Đang mở" : "Đã khóa"}`;
+
+        $("evaluationStatus").textContent = "Đang kết nối dữ liệu đánh giá...";
+
+        const evaluationsQuery = query(
+          collection(db, "peer_evaluations"),
+          where("roomCode", "==", roomCode),
+          where("roundId", "==", roundId),
+        );
+
+        evaluationUnsubscribe = onSnapshot(
+          evaluationsQuery,
+          (snapshot) => {
+            peerEvaluations = snapshot.docs.map((doc) => ({
+              id: doc.id,
+              ...doc.data(),
+            }));
+
+            renderEvaluationDashboard();
+
+            $("evaluationStatus").textContent =
+              `Đã tải ${peerEvaluations.length} lượt đánh giá. Dữ liệu tự cập nhật khi có lượt mới.`;
+          },
+          (error) => {
+            console.error("Lỗi đọc đánh giá Firestore:", error);
+
+            $("evaluationStatus").textContent =
+              "Không đọc được dữ liệu đánh giá. Kiểm tra kết nối Firebase và quyền đọc Firestore.";
+          },
+        );
+      }
+
+      $("refreshEvaluationsBtn").addEventListener(
+        "click",
+        subscribeEvaluations,
+      );
+
+      function render() {
+        for (let l = 1; l <= 3; l++) {
+          let n = 0;
+          for (let t = 1; t <= laneOrder[l].length; t++) {
+            const ev = events.find(
+                (e) => Number(e.lane) === l && Number(e.team) === t,
+              ),
+              el = $(`team-${l}-${t}`);
+            el.classList.toggle("done", !!ev);
+            el.querySelector("small").textContent = ev
+              ? `#${events.indexOf(ev) + 1} · ${new Date(ev.created_at).toLocaleTimeString("vi-VN")}`
+              : "Chưa bấm chuông";
+            if (ev) n++;
+          }
+          $(`count${l}`).textContent = `${n}/${laneOrder[l].length}`;
+        }
+        const feed = $("feed");
+        if (!events.length) {
+          feed.innerHTML =
+            '<div class="empty">Chưa có nhóm nào bấm chuông.</div>';
+          return;
+        }
+        feed.innerHTML = events
+          .map(
+            (e, i) =>
+              `<div class="event"><div class="rank">${i + 1}</div><div><strong>Dãy ${e.lane} · Nhóm ${laneOrder[e.lane][e.team - 1]} · HS ${studentPair(laneOrder[e.lane][e.team - 1])}</strong><small>${new Date(e.created_at).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</small></div><small>Đã ghi nhận</small></div>`,
+          )
+          .join("");
+      }
+      function playTone(lane) {
+        if (!soundEnabled || !audioCtx) return;
+        const freqs = { 1: [660, 880], 2: [523, 784], 3: [440, 660, 880] };
+        const now = audioCtx.currentTime;
+        (freqs[lane] || freqs[1]).forEach((f, i) => {
+          const o = audioCtx.createOscillator(),
+            g = audioCtx.createGain();
+          o.type = "sine";
+          o.frequency.value = f;
+          g.gain.setValueAtTime(0.0001, now + i * 0.14);
+          g.gain.exponentialRampToValueAtTime(0.22, now + i * 0.14 + 0.025);
+          g.gain.exponentialRampToValueAtTime(0.0001, now + i * 0.14 + 0.2);
+          o.connect(g);
+          g.connect(audioCtx.destination);
+          o.start(now + i * 0.14);
+          o.stop(now + i * 0.14 + 0.22);
+        });
+      }
+      const responseSound = $("responseSound");
+      responseSound.volume = 1.0;
+      function playResponseSound() {
+        if (!soundEnabled) return;
+
+        responseSound.pause();
+        responseSound.currentTime = 0;
+
+        responseSound.play().catch((error) => {
+          console.warn("Không phát được âm thanh phản hồi:", error);
+        });
+      }
+
+      // HIEU UNG PHAO HOA
+
+      const fireworksCanvas = $("fireworksCanvas");
+      const fireworksCtx = fireworksCanvas.getContext("2d");
+
+      let fireworksParticles = [];
+      let fireworksAnimationId = null;
+
+      function resizeFireworksCanvas() {
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+        fireworksCanvas.width = window.innerWidth * dpr;
+        fireworksCanvas.height = window.innerHeight * dpr;
+
+        fireworksCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      }
+
+      window.addEventListener("resize", resizeFireworksCanvas);
+      resizeFireworksCanvas();
+
+      function launchFireworks() {
+        const colors = [
+          "#FFD700",
+          "#FF4D6D",
+          "#00E5FF",
+          "#A78BFA",
+          "#4ADE80",
+          "#FFFFFF",
+          "#FF8C42",
+        ];
+
+        const width = window.innerWidth;
+        const height = window.innerHeight;
+
+        // Bắn 3 cụm pháo hoa ở các vị trí khác nhau
+        const bursts = [
+          { x: width * 0.25, y: height * 0.3 },
+          { x: width * 0.5, y: height * 0.22 },
+          { x: width * 0.75, y: height * 0.3 },
+        ];
+
+        bursts.forEach((burst, burstIndex) => {
+          const color = colors[Math.floor(Math.random() * colors.length)];
+
+          const count = 55;
+
+          for (let i = 0; i < count; i++) {
+            const angle = (Math.PI * 2 * i) / count;
+            const speed = 2 + Math.random() * 4;
+
+            fireworksParticles.push({
+              x: burst.x,
+              y: burst.y,
+              vx: Math.cos(angle) * speed,
+              vy: Math.sin(angle) * speed,
+              gravity: 0.055,
+              friction: 0.985,
+              life: 65 + Math.random() * 25,
+              maxLife: 90,
+              size: 2 + Math.random() * 2.5,
+              color: color,
+            });
+          }
+        });
+
+        if (!fireworksAnimationId) {
+          animateFireworks();
+        }
+      }
+
+      function animateFireworks() {
+        fireworksCtx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+
+        fireworksParticles = fireworksParticles.filter(
+          (particle) => particle.life > 0,
+        );
+
+        fireworksParticles.forEach((particle) => {
+          particle.x += particle.vx;
+          particle.y += particle.vy;
+
+          particle.vx *= particle.friction;
+          particle.vy *= particle.friction;
+          particle.vy += particle.gravity;
+          particle.life--;
+
+          const alpha = Math.max(
+            0,
+            Math.min(1, particle.life / particle.maxLife),
+          );
+
+          fireworksCtx.globalAlpha = alpha;
+          fireworksCtx.fillStyle = particle.color;
+          fireworksCtx.shadowBlur = 12;
+          fireworksCtx.shadowColor = particle.color;
+
+          fireworksCtx.beginPath();
+          fireworksCtx.arc(
+            particle.x,
+            particle.y,
+            particle.size,
+            0,
+            Math.PI * 2,
+          );
+          fireworksCtx.fill();
+        });
+
+        fireworksCtx.globalAlpha = 1;
+        fireworksCtx.shadowBlur = 0;
+
+        if (fireworksParticles.length > 0) {
+          fireworksAnimationId = requestAnimationFrame(animateFireworks);
+        } else {
+          fireworksCtx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+
+          fireworksAnimationId = null;
+        }
+      }
+
+      // END HIEU UNG PHAO HOA
+
+      function notify(e) {
+        launchFireworks();
+        // playTone(e.lane);
+        duckBackgroundMusic();
+        playResponseSound();
+        const group = laneOrder[Number(e.lane)]?.[Number(e.team) - 1];
+        $("banner").textContent =
+          `🔔 DÃY ${e.lane} — NHÓM ${group ?? e.team} (HS ${group ? studentPair(group) : "?"}) ĐÃ BẤM CHUÔNG!`;
+        const activeTeam = $(`team-${e.lane}-${e.team}`);
+        if (activeTeam) {
+          activeTeam.classList.add("active");
+          activeTeam.scrollIntoView({ behavior: "smooth", block: "nearest" });
+          window.setTimeout(() => activeTeam.classList.remove("active"), 1800);
+        }
+        $("banner").classList.remove("show");
+        void $("banner").offsetWidth;
+        $("banner").classList.add("show");
+      }
+      async function loadCurrentRound() {
+        const { data, error } = await supabase
+          .from("buzz_rounds")
+          .select("*")
+          .eq("room_code", room())
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (error) throw error;
+        currentRound = data;
+        if (channel) {
+          await supabase.removeChannel(channel);
+          channel = null;
+        }
+        // events = [];
+        // if (currentRound) {
+        events = [];
+        subscribeEvaluations();
+        subscribeSubmissions();
+
+        if (currentRound) {
+          $("roundState").textContent = currentRound.is_open
+            ? "🟢 ĐANG MỞ"
+            : "🔒 ĐÃ KHÓA";
+          const { data: ev, error: ee } = await supabase
+            .from("buzz_events")
+            .select("*")
+            .eq("round_id", currentRound.id)
+            .order("created_at", { ascending: true });
+          if (ee) throw ee;
+          events = ev || [];
+          channel = supabase
+            .channel("buzz-" + currentRound.id)
+            .on(
+              "postgres_changes",
+              {
+                event: "INSERT",
+                schema: "public",
+                table: "buzz_events",
+                filter: `round_id=eq.${currentRound.id}`,
+              },
+              (payload) => {
+                if (!events.some((e) => e.id === payload.new.id)) {
+                  events.push(payload.new);
+                  events.sort(
+                    (a, b) => new Date(a.created_at) - new Date(b.created_at),
+                  );
+                  render();
+                  notify(payload.new);
+                }
+              },
+            )
+            .subscribe((s) => {
+              if (s === "SUBSCRIBED") {
+                $("liveText").textContent = "Đã kết nối realtime";
+              }
+            });
+        } else {
+          $("roundState").textContent = "Chưa có vòng thi";
+          $("liveText").textContent = "Đã kết nối";
+        }
+        render();
+      }
+      async function refresh() {
+        try {
+          await loadCurrentRound();
+          setStatus("Đã tải dữ liệu vòng thi.");
+        } catch (e) {
+          console.error(e);
+          setStatus("Lỗi tải dữ liệu: " + e.message);
+        }
+      }
+      async function startRound() {
+        if (!checkPin() || roundBusy) return;
+        const r = room();
+        if (!r) {
+          setStatus("Vui lòng nhập mã lớp.");
+          return;
+        }
+        roundBusy = true;
+        $("startBtn").disabled = true;
+        try {
+          if (currentRound && currentRound.is_open) {
+            const { error } = await supabase
+              .from("buzz_rounds")
+              .update({ is_open: false, closed_at: new Date().toISOString() })
+              .eq("id", currentRound.id);
+            if (error) throw error;
+          }
+          const { data, error } = await supabase
+            .from("buzz_rounds")
+            .insert({ room_code: r, is_open: true })
+            .select()
+            .single();
+          if (error) throw error;
+          currentRound = data;
+          await loadCurrentRound();
+          setStatus("Đã mở vòng thi mới. Học sinh có thể bấm chuông.");
+        } catch (e) {
+          console.error(e);
+          setStatus("Không tạo được vòng thi: " + e.message);
+        } finally {
+          roundBusy = false;
+          $("startBtn").disabled = false;
+        }
+      }
+      async function closeRound() {
+        if (!checkPin()) return;
+        if (!currentRound || !currentRound.is_open) {
+          setStatus("Không có vòng thi đang mở.");
+          return;
+        }
+        try {
+          const { error } = await supabase
+            .from("buzz_rounds")
+            .update({ is_open: false, closed_at: new Date().toISOString() })
+            .eq("id", currentRound.id);
+          if (error) throw error;
+          await loadCurrentRound();
+          setStatus("Đã khóa vòng thi.");
+        } catch (e) {
+          setStatus("Không khóa được vòng thi: " + e.message);
+        }
+      }
+      $("startBtn").onclick = startRound;
+      $("closeBtn").onclick = closeRound;
+      $("clearBtn").onclick = refresh;
+      $("soundBtn").onclick = async () => {
+        try {
+          const AC = window.AudioContext || window.webkitAudioContext;
+          audioCtx = new AC();
+          await audioCtx.resume();
+          soundEnabled = true;
+          playTone(1);
+          $("soundBtn").textContent = "✓ Âm thanh đã bật";
+          setStatus("Âm thanh đã bật.");
+        } catch (e) {
+          setStatus(
+            "Trình duyệt không cho phép phát âm thanh. Hãy thử nhấn lại.",
+          );
+        }
+      };
+
+      // const bgMusic = $("bgMusic");
+      // const musicBtn = $("musicBtn");
+      // let musicEnabled = true;
+
+      const bgMusic = $("bgMusic");
+      const musicBtn = $("musicBtn");
+      let musicEnabled = true;
+
+      // Âm lượng nhạc nền
+      const normalMusicVolume = 0.7; // 70% khi bình thường
+      const duckMusicVolume = 0.3; // 20% khi học sinh phản hồi
+      const duckDuration = 2500; // Thời gian ưu tiên tiếng phản hồi: 2,5 giây
+
+      bgMusic.volume = normalMusicVolume;
+
+      let musicFadeTimer = null;
+
+      function duckBackgroundMusic() {
+        if (!musicEnabled || bgMusic.paused) return;
+
+        // Hủy lần khôi phục âm lượng trước nếu có phản hồi mới
+        clearInterval(musicFadeTimer);
+        musicFadeTimer = null;
+
+        // Giảm nhạc nền ngay để nghe rõ tiếng phản hồi
+        bgMusic.volume = duckMusicVolume;
+
+        // Sau 2,5 giây, tăng âm lượng trở lại từ từ
+        setTimeout(() => {
+          if (!musicEnabled || bgMusic.paused) return;
+
+          clearInterval(musicFadeTimer);
+
+          const steps = 20;
+          const startVolume = bgMusic.volume;
+          const increment = (normalMusicVolume - startVolume) / steps;
+          let step = 0;
+
+          musicFadeTimer = setInterval(() => {
+            step++;
+            bgMusic.volume = Math.min(
+              normalMusicVolume,
+              startVolume + increment * step,
+            );
+
+            if (step >= steps) {
+              clearInterval(musicFadeTimer);
+              musicFadeTimer = null;
+              bgMusic.volume = normalMusicVolume;
+            }
+          }, 50);
+        }, duckDuration);
+      }
+
+      function updateMusicButton() {
+        musicBtn.textContent = musicEnabled
+          ? "🎵 Tắt nhạc nền"
+          : "🔇 Bật nhạc nền";
+      }
+
+      async function playBackgroundMusic() {
+        if (!musicEnabled) return;
+
+        try {
+          await bgMusic.play();
+          updateMusicButton();
+        } catch (error) {
+          // Trình duyệt chặn tự phát: chờ giáo viên tương tác.
+          musicBtn.textContent = "🎵 Bật nhạc nền";
+        }
+      }
+
+      // Thử tự phát khi mở trang.
+      playBackgroundMusic();
+
+      // Nếu bị trình duyệt chặn, thử lại sau tương tác đầu tiên.
+      function retryBackgroundMusic() {
+        if (musicEnabled && bgMusic.paused) {
+          playBackgroundMusic();
+        }
+      }
+
+      document.addEventListener("pointerdown", retryBackgroundMusic, {
+        once: true,
+      });
+
+      // Nút điều khiển nhạc nền độc lập với tiếng chuông.
+      musicBtn.onclick = async () => {
+        if (musicEnabled) {
+          musicEnabled = false;
+          bgMusic.pause();
+          updateMusicButton();
+          setStatus("Đã tắt nhạc nền. Tiếng chuông học sinh vẫn hoạt động.");
+        } else {
+          musicEnabled = true;
+
+          try {
+            await bgMusic.play();
+            updateMusicButton();
+            setStatus("Đã bật nhạc nền.");
+          } catch (error) {
+            musicEnabled = false;
+            updateMusicButton();
+            setStatus("Không phát được nhạc. Kiểm tra file background.mp3.");
+          }
+        }
+      };
+
+      updateMusicButton();
+
+      $("roomCode").addEventListener("change", () => {
+        refresh();
+        subscribeEvaluationVisibility().catch((e) => {
+          console.error(e);
+          setStatus("Không tải được trạng thái form đánh giá: " + e.message);
+        });
+      });
+      $("evaluationVisibleToggle").addEventListener("change", (event) => {
+        saveEvaluationVisibility(event.target.checked);
+      });
+      renderLanes();
+      if (
+        !SUPABASE_URL.startsWith("http") ||
+        SUPABASE_ANON_KEY.includes("YOUR_")
+      ) {
+        setStatus("Cấu hình Supabase chưa được điền trong config.js.");
+      } else {
+        refresh();
+        subscribeEvaluationVisibility().catch((e) => {
+          console.error(e);
+          setStatus("Không tải được trạng thái form đánh giá: " + e.message);
+        });
+      }
+    </script>
+  </body>
+</html>

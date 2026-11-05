@@ -1,0 +1,6 @@
+import React from "react";
+
+const glyphs = {Activity:"◉",ArrowLeft:"←",BarChart3:"▥",Bell:"●",CheckCircle2:"✓",ChevronRight:"›",Clock3:"◷",FileUp:"⇧",GraduationCap:"◆",LayoutDashboard:"▦",Link2:"↗",LockKeyhole:"▣",LogOut:"↪",Menu:"☰",Monitor:"▰",Play:"▶",Plus:"+",QrCode:"▦",Send:"➤",Settings2:"⚙",ShieldCheck:"✓",Sparkles:"✦",Square:"■",Star:"★",Upload:"⇧",Users:"♟",X:"×",Zap:"ϟ"};
+const make = (name) => function Icon({ size = 20, className = "", ...props }) { return <span aria-hidden="true" className={`icon icon-${name} ${className}`} style={{ fontSize:size,width:size,height:size }} {...props}>{glyphs[name]}</span>; };
+
+export const Activity=make("Activity"),ArrowLeft=make("ArrowLeft"),BarChart3=make("BarChart3"),Bell=make("Bell"),CheckCircle2=make("CheckCircle2"),ChevronRight=make("ChevronRight"),Clock3=make("Clock3"),FileUp=make("FileUp"),GraduationCap=make("GraduationCap"),LayoutDashboard=make("LayoutDashboard"),Link2=make("Link2"),LockKeyhole=make("LockKeyhole"),LogOut=make("LogOut"),Menu=make("Menu"),Monitor=make("Monitor"),Play=make("Play"),Plus=make("Plus"),QrCode=make("QrCode"),Send=make("Send"),Settings2=make("Settings2"),ShieldCheck=make("ShieldCheck"),Sparkles=make("Sparkles"),Square=make("Square"),Star=make("Star"),Upload=make("Upload"),Users=make("Users"),X=make("X"),Zap=make("Zap");

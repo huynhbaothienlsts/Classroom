@@ -1,0 +1,1372 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Classroom Buzz — Học sinh</title>
+    <script>
+      (() => {
+        "use strict";
+
+        // Chặn menu chuột phải
+        document.addEventListener("contextmenu", (event) => {
+          event.preventDefault();
+        });
+
+        // Chặn các phím tắt DevTools / xem mã nguồn phổ biến
+        document.addEventListener(
+          "keydown",
+          (event) => {
+            const key = (event.key || "").toLowerCase();
+
+            const devToolsShortcut =
+              event.key === "F12" ||
+              (event.ctrlKey &&
+                event.shiftKey &&
+                ["i", "j", "c"].includes(key)) ||
+              (event.ctrlKey && key === "u") ||
+              (event.metaKey && event.altKey && ["i", "j", "c"].includes(key));
+
+            if (devToolsShortcut) {
+              event.preventDefault();
+              event.stopPropagation();
+            }
+          },
+          true,
+        );
+      })();
+    </script>
+    <style>
+      :root {
+        --bg: #041329;
+        --panel: #09264c;
+        --panel2: #0d2e59;
+        --muted: #91b9eb;
+        --line: #1264b8;
+        --blue: #1688ff;
+        --cyan: #50d9ff;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: Inter, system-ui, "Segoe UI", sans-serif;
+        color: #f7fbff;
+        background: radial-gradient(
+          ellipse at 50% 0,
+          #123b72 0,
+          #061a36 45%,
+          #020d1d 100%
+        );
+        padding: 28px 18px;
+      }
+      .wrap {
+        width: min(1000px, 100%);
+        margin: 0 auto;
+      }
+      .brand {
+        text-align: center;
+        margin-bottom: 25px;
+      }
+      .brand .mark {
+        font-size: 42px;
+        filter: drop-shadow(0 0 15px #42a5ff);
+      }
+      .brand h1 {
+        margin: 5px 0;
+        font-size: clamp(26px, 4vw, 38px);
+        letter-spacing: 1.2px;
+        text-shadow: 0 0 24px #258cff66;
+      }
+      .sub {
+        color: var(--muted);
+        font-size: 14px;
+        line-height: 1.6;
+      }
+      .card {
+        background: linear-gradient(
+          145deg,
+          rgba(8, 33, 67, 0.97),
+          rgba(4, 22, 47, 0.98)
+        );
+        border: 1px solid #175ba0;
+        border-radius: 24px;
+        padding: clamp(18px, 3.5vw, 32px);
+        box-shadow:
+          0 24px 75px #0007,
+          inset 0 1px #ffffff08;
+      }
+      label {
+        display: block;
+        font-weight: 750;
+        margin: 18px 0 10px;
+      }
+      #roomCode,
+      .evaluation select {
+        width: 100%;
+        padding: 14px 16px;
+        border-radius: 14px;
+        background: #061a34;
+        border: 1px solid #2866a4;
+        color: #fff;
+        font-size: 16px;
+        outline: none;
+        transition: 0.2s;
+      }
+      #roomCode:focus,
+      .evaluation select:focus {
+        border-color: #36b7ff;
+        box-shadow: 0 0 0 3px #1688ff2b;
+      }
+      #roomCode::placeholder {
+        color: #6499d3;
+      }
+      .choices,
+      .teams {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+      }
+      .play-area {
+        /* display: grid; */
+        grid-template-columns: minmax(0, 1fr) 220px;
+        gap: 24px;
+        align-items: center;
+      }
+      .selection-area {
+        min-width: 0;
+      }
+      .group-select {
+        display: block;
+        width: 100%;
+        min-height: 50px;
+        padding: 13px 15px;
+        border: 1px solid #2866a4;
+        border-radius: 14px;
+        background: #061a34;
+        color: #fff;
+        font: inherit;
+        font-size: 16px;
+        cursor: pointer;
+        outline: none;
+        transition:
+          border-color 0.2s,
+          box-shadow 0.2s;
+      }
+      .group-select:focus {
+        border-color: #36b7ff;
+        box-shadow: 0 0 0 3px #1688ff2b;
+      }
+      .group-select option {
+        background: #061a34;
+        color: #fff;
+      }
+      .group-select:disabled {
+        opacity: 0.65;
+        cursor: not-allowed;
+      }
+      .buzz-area {
+        min-width: 0;
+        text-align: center;
+      }
+      .buzz-area .buzz {
+        width: min(200px, 100%);
+        margin: 20px auto 18px;
+      }
+      .buzz-area .status {
+        font-size: 14px;
+      }
+      .choice {
+        border: 1px solid #2b639b;
+        background: linear-gradient(145deg, #0c2544, #0a1d36);
+        color: #e7f2ff;
+        border-radius: 15px;
+        padding: 15px 8px;
+        font-weight: 800;
+        font-size: 15px;
+        cursor: pointer;
+        transition:
+          transform 0.15s,
+          border-color 0.15s,
+          background 0.15s;
+        line-height: 1.5;
+      }
+      .choice small {
+        font-size: 13px;
+        font-weight: 500;
+        color: #a8d1ff;
+      }
+      .choice:hover {
+        transform: translateY(-2px);
+        border-color: #59c6ff;
+      }
+      .choice.active {
+        background: linear-gradient(135deg, #2563eb, #087be8);
+        border-color: #70d8ff;
+        box-shadow:
+          0 0 0 2px #39aaff22,
+          0 7px 24px #087bff35;
+      }
+      .choice:disabled {
+        opacity: 0.65;
+        cursor: not-allowed;
+      }
+      .submission-form {
+        margin: 22px 0;
+        padding: 20px;
+        border: 1px solid #2878ba;
+        border-radius: 18px;
+        background: linear-gradient(145deg, #0b2b50, #061a32);
+      }
+      .submission-form h2 {
+        margin: 0 0 8px;
+        font-size: 20px;
+      }
+      .submission-form .sub-instruction {
+        color: #a8c9ef;
+        font-size: 14px;
+        line-height: 1.6;
+      }
+      .submission-form textarea,
+      .submission-form input[type="url"] {
+        width: 100%;
+        padding: 12px 14px;
+        border: 1px solid #2866a4;
+        border-radius: 12px;
+        background: #04162b;
+        color: #fff;
+        font: inherit;
+      }
+      .submission-form textarea {
+        min-height: 100px;
+        resize: vertical;
+      }
+      .submission-form textarea:focus,
+      .submission-form input[type="url"]:focus {
+        outline: 2px solid #1688ff66;
+        border-color: #50d9ff;
+      }
+      #submitWorkBtn {
+        border: 0;
+        border-radius: 12px;
+        padding: 13px 18px;
+        background: linear-gradient(135deg, #24c58a, #0d9668);
+        color: #fff;
+        font-weight: 900;
+        cursor: pointer;
+        margin-top: 14px;
+        width: 100%;
+      }
+      #submitWorkBtn:disabled {
+        opacity: 0.6;
+        cursor: wait;
+      }
+      .submission-status {
+        margin-top: 10px;
+        color: #a8c9ef;
+        line-height: 1.5;
+      }
+      .submission-status.ok {
+        color: #86efac;
+      }
+      .submission-status.err {
+        color: #fca5a5;
+      }
+      .buzz {
+        display: block;
+        width: min(210px, 70%);
+        aspect-ratio: 1;
+        border: 8px solid #8b172b;
+        border-radius: 50%;
+        margin: 28px auto 20px;
+        background: radial-gradient(
+          circle at 35% 23%,
+          #ff8a9b,
+          #f02742 45%,
+          #a9001d 80%
+        );
+        color: #fff;
+        font-size: clamp(20px, 3vw, 26px);
+        font-weight: 1000;
+        letter-spacing: 0.4px;
+        box-shadow:
+          0 10px 0 #670d20,
+          0 18px 35px #0008,
+          inset 0 5px 10px #ffffff55,
+          0 0 35px #ff234c35;
+        cursor: pointer;
+        transition: 0.12s;
+      }
+      .buzz:active {
+        transform: translateY(7px);
+        box-shadow:
+          0 3px 0 #670d20,
+          0 10px 22px #0007;
+      }
+      .buzz:disabled {
+        filter: grayscale(0.6);
+        cursor: not-allowed;
+        opacity: 0.8;
+      }
+      .status {
+        text-align: center;
+        min-height: 36px;
+        color: var(--muted);
+        line-height: 1.55;
+        padding: 5px 8px;
+      }
+      .status.ok {
+        color: #86efac;
+        font-weight: 800;
+      }
+      .status.err {
+        color: #fca5a5;
+        font-weight: 750;
+      }
+      .hint {
+        border-top: 1px solid #205184;
+        margin-top: 20px;
+        padding-top: 17px;
+        text-align: center;
+        color: #91b9eb;
+        font-size: 13px;
+      }
+      #fireworksCanvas {
+        position: fixed;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        z-index: 9999;
+      }
+      .evaluation {
+        display: none;
+        position: relative;
+        overflow: hidden;
+        border: 1px solid #087cff;
+        border-radius: 23px;
+        margin-top: 24px;
+        padding: clamp(18px, 3vw, 30px);
+        background:
+          radial-gradient(ellipse at 90% 0, #0e3d77 0, transparent 34%),
+          linear-gradient(145deg, #092955, #061a36 75%);
+        box-shadow:
+          inset 0 0 35px #087cff0b,
+          0 0 25px #007bff0b;
+      }
+      .evaluation.is-visible {
+        display: block;
+      }
+      .eval-heading {
+        display: flex;
+        align-items: center;
+        gap: 18px;
+        margin-bottom: 22px;
+      }
+      .eval-emblem {
+        display: grid;
+        place-items: center;
+        flex: 0 0 76px;
+        width: 76px;
+        height: 76px;
+        border: 2px solid #168dff;
+        border-radius: 25px;
+        background: linear-gradient(145deg, #125ed0, #073c8b);
+        font-size: 35px;
+        box-shadow: 0 0 25px #168dff44;
+      }
+      .evaluation h2 {
+        font-size: clamp(22px, 3.4vw, 34px);
+        letter-spacing: 0.3px;
+        line-height: 1.15;
+        margin: 0 0 7px;
+        text-align: left;
+      }
+      .evaluation .intro {
+        margin: 0;
+        color: #79caff;
+        font-size: 15px;
+      }
+      .eval-select-wrap {
+        padding: 17px 18px 19px;
+        border: 1px solid #176ab6;
+        border-radius: 17px;
+        background: #061d3b99;
+        margin-bottom: 22px;
+      }
+      .eval-select-wrap label {
+        margin: 0 0 12px;
+        font-size: 17px;
+      }
+      .evaluation select {
+        border: 2px solid #168dff;
+        box-shadow: 0 0 12px #168dff20;
+        font-size: 16px;
+      }
+      .eval-section-title {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-size: 21px;
+        font-weight: 850;
+        margin: 0 0 14px;
+      }
+      .eval-section-title span {
+        font-size: 27px;
+        color: #50c9ff;
+      }
+      .eval-checks {
+        display: grid;
+        gap: 12px;
+        margin: 0 0 20px;
+      }
+      .eval-checks label {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        margin: 0;
+        padding: 15px 17px;
+        border: 1px solid #176fbe;
+        border-radius: 16px;
+        background: linear-gradient(110deg, #103563, #0a2549);
+        line-height: 1.45;
+        cursor: pointer;
+        transition: 0.18s;
+      }
+      .eval-checks label:hover {
+        border-color: #43c5ff;
+        background: linear-gradient(110deg, #144477, #0b2c54);
+      }
+      .eval-checks label:has(input:checked) {
+        border-color: #31b8ff;
+        background: linear-gradient(110deg, #10467a, #0b2b51);
+        box-shadow: inset 0 0 0 1px #168dff22;
+      }
+      .eval-icon {
+        display: grid;
+        place-items: center;
+        flex: 0 0 54px;
+        width: 54px;
+        height: 54px;
+        border-radius: 50%;
+        font-size: 26px;
+        font-weight: 900;
+        color: white;
+        box-shadow: inset 0 2px 5px #ffffff4a;
+      }
+      .eval-icon.green {
+        background: linear-gradient(145deg, #42d7b0, #0ba66f);
+      }
+      .eval-icon.purple {
+        background: linear-gradient(145deg, #b26cff, #6b35e8);
+      }
+      .eval-icon.blue {
+        background: linear-gradient(145deg, #55c5ff, #1769ed);
+      }
+      .eval-icon.orange {
+        background: linear-gradient(145deg, #ffc65c, #ff7b16);
+      }
+      .eval-copy {
+        flex: 1;
+        min-width: 0;
+      }
+      .eval-copy strong {
+        display: block;
+        font-size: 16px;
+        margin-bottom: 3px;
+      }
+      .eval-copy small {
+        display: block;
+        color: #a6caff;
+        font-size: 14px;
+        font-weight: 450;
+      }
+      .eval-checks input[type="checkbox"] {
+        appearance: none;
+        flex: 0 0 25px;
+        width: 25px;
+        height: 25px;
+        margin: 0;
+        border: 2px solid #5a9ce8;
+        border-radius: 8px;
+        background: #071e3d;
+        cursor: pointer;
+        position: relative;
+      }
+      .eval-checks input[type="checkbox"]:checked {
+        background: #1688ff;
+        border-color: #79dfff;
+      }
+      .eval-checks input[type="checkbox"]:checked:after {
+        content: "✓";
+        position: absolute;
+        inset: -1px 0 0;
+        text-align: center;
+        color: white;
+        font-size: 19px;
+        font-weight: 900;
+      }
+      #submitEvaluation {
+        width: 100%;
+        padding: 16px;
+        border: 1px solid #58bfff;
+        border-radius: 15px;
+        background: linear-gradient(100deg, #369bff, #1260ee);
+        color: white;
+        font-size: 17px;
+        font-weight: 900;
+        letter-spacing: 0.3px;
+        cursor: pointer;
+        box-shadow: 0 8px 22px #096dff35;
+        transition: 0.18s;
+      }
+      #submitEvaluation:hover {
+        filter: brightness(1.12);
+        transform: translateY(-1px);
+      }
+      #submitEvaluation:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+      }
+      #evaluationStatus {
+        margin-top: 12px;
+        min-height: 38px;
+        border: 1px solid #2267a8;
+        border-radius: 13px;
+        background: #102f54;
+        color: #a8cefa;
+        font-size: 13px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      #evaluationStatus:empty {
+        display: none;
+      }
+      .eval-foot {
+        border-top: 1px solid #205184;
+        margin-top: 17px;
+        padding-top: 16px;
+        text-align: center;
+        color: #91b9eb;
+        font-size: 13px;
+      }
+      @media (max-width: 720px) {
+        .play-area {
+          grid-template-columns: 1fr;
+          gap: 4px;
+        }
+        .buzz-area {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 16px;
+        }
+        .buzz-area .buzz {
+          width: 130px;
+          flex: 0 0 130px;
+          margin: 18px 0 20px;
+          border-width: 6px;
+          font-size: 17px;
+        }
+        .buzz-area .status {
+          flex: 1;
+          text-align: left;
+        }
+      }
+      @media (max-width: 520px) {
+        body {
+          padding: 18px 11px;
+        }
+        .brand {
+          margin-bottom: 18px;
+        }
+        .card {
+          padding: 16px;
+          border-radius: 19px;
+        }
+        .choices,
+        .teams {
+          gap: 7px;
+        }
+        .choice {
+          font-size: 13px;
+          padding: 12px 4px;
+          border-radius: 12px;
+        }
+        .choice small {
+          font-size: 11px;
+        }
+        .evaluation {
+          padding: 15px;
+          border-radius: 18px;
+        }
+        .eval-heading {
+          gap: 12px;
+        }
+        .eval-emblem {
+          flex-basis: 57px;
+          width: 57px;
+          height: 57px;
+          border-radius: 18px;
+          font-size: 27px;
+        }
+        .evaluation h2 {
+          font-size: 22px;
+        }
+        .evaluation .intro {
+          font-size: 13px;
+        }
+        .eval-select-wrap {
+          padding: 14px;
+        }
+        .eval-checks label {
+          gap: 10px;
+          padding: 12px 10px;
+        }
+        .eval-icon {
+          flex-basis: 42px;
+          width: 42px;
+          height: 42px;
+          font-size: 21px;
+        }
+        .eval-copy strong {
+          font-size: 14px;
+        }
+        .eval-copy small {
+          font-size: 12px;
+        }
+        .eval-checks input[type="checkbox"] {
+          flex-basis: 22px;
+          width: 22px;
+          height: 22px;
+        }
+        .eval-section-title {
+          font-size: 19px;
+        }
+      }
+      .mark {
+        display: inline-block;
+        font-size: 32px;
+        transform-origin: top center;
+        animation: ring 1s ease-in-out infinite;
+      }
+      #buzzBtn {
+        display: inline-block;
+        font-size: 32px;
+        transform-origin: top center;
+        animation: ring 1s ease-in-out infinite;
+      }
+
+      @keyframes ring {
+        0%,
+        100% {
+          transform: rotate(0);
+        }
+        10%,
+        30%,
+        50%,
+        70% {
+          transform: rotate(15deg);
+        }
+        20%,
+        40%,
+        60%,
+        80% {
+          transform: rotate(-15deg);
+        }
+        90% {
+          transform: rotate(0);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="wrap">
+      <header class="brand">
+        <div class="mark">🔔</div>
+        <h1>C++ LOOP - CHALLENGE</h1>
+        <div class="sub">HỆ THỐNG THI ĐUA LẬP TRÌNH</div>
+      </header>
+      <section class="card">
+        <label for="roomCode">Mã lớp / mã phòng</label>
+        <input
+          id="roomCode"
+          maxlength="30"
+          placeholder="Ví dụ: FOR2026"
+          autocomplete="off"
+        />
+
+        <div class="selection-area">
+          <label for="laneSelect">1. Chọn dãy bàn</label>
+          <select id="laneSelect" class="group-select">
+            <option value="1">🔵 Dãy 1</option>
+            <option value="2">🟢 Dãy 2</option>
+            <option value="3">🟠 Dãy 3</option>
+          </select>
+          <label for="teamSelect">2. Chọn nhóm</label>
+          <select id="teamSelect" class="group-select"></select>
+        </div>
+
+        <section class="submission-form" aria-labelledby="submissionTitle">
+          <h2 id="submissionTitle">📤 NỘP BÀI TRƯỚC KHI BẤM CHUÔNG</h2>
+          <div class="sub-instruction">
+            Chọn đúng dãy và nhóm của mình, nhập phần trả lời và dán đường dẫn
+            bài làm. Nút bấm chuông chỉ được mở khóa sau khi bài nộp được lưu
+            thành công.
+          </div>
+          <label for="workAnswer">Câu trả lời / giải thích của nhóm</label>
+          <p>1. Giá trị khởi tạo biến trong bài của nhóm là gì (i bắt đầu từ mấy)? Vì sao nhóm chọn giá trị đó?</p>
+          <p>2. Điều kiện lặp nhóm chọn để giải quyết bài toán là gì? Vì sao nhóm chọn điều kiện đó?</p>
+          <p>3. Bước nhảy (bước cập nhật) trong bài của nhóm là gì? Vì sao nhóm sử dụng bước cập nhật như thế?</p>
+          <textarea
+            id="workAnswer"
+            maxlength="5000"
+            placeholder="Nhập câu trả lời,..."
+          ></textarea>
+          <label for="workUrl">URL bài làm</label>
+          <input
+            type="url"
+            id="workUrl"
+            placeholder="https://..."
+            autocomplete="url"
+            required
+          />
+          <button type="button" id="submitWorkBtn">📨 NỘP BÀI</button>
+          <div
+            id="submissionStatus"
+            class="submission-status"
+            aria-live="polite"
+          >
+            Chọn dãy, nhóm và nhập câu trả lời để nộp bài.
+          </div>
+        </section>
+
+        <div class="play-area">
+          <!-- <div class="selection-area">
+            <label for="laneSelect">1. Chọn dãy bàn</label>
+            <select id="laneSelect" class="group-select">
+              <option value="1">🔵 Dãy 1</option>
+              <option value="2">🟢 Dãy 2</option>
+              <option value="3">🟠 Dãy 3</option>
+            </select>
+            <label for="teamSelect">2. Chọn nhóm</label>
+            <select id="teamSelect" class="group-select"></select>
+          </div> -->
+          <div class="buzz-area">
+            <button type="button" class="buzz" id="buzzBtn">
+              🔔<br />BẤM CHUÔNG
+            </button>
+            <div class="status" id="status" aria-live="polite">
+              Chọn đúng dãy và nhóm trước khi bấm chuông.
+            </div>
+          </div>
+        </div>
+
+        <section
+          class="evaluation"
+          id="evaluationForm"
+          aria-labelledby="evaluationTitle"
+        >
+          <div class="eval-heading">
+            <div class="eval-emblem" aria-hidden="true">📝</div>
+            <div>
+              <h2 id="evaluationTitle">ĐÁNH GIÁ NHÓM BẠN</h2>
+              <p class="intro">
+                Đánh giá kết quả và cách giải thích vòng lặp for.
+              </p>
+            </div>
+          </div>
+
+          <div class="eval-select-wrap">
+            <label for="presentingGroup">👥 &nbsp;Nhóm đang trình bày</label>
+            <select id="presentingGroup">
+              <option value="">-- Chọn nhóm --</option>
+            </select>
+          </div>
+
+          <div class="eval-section-title"><span>★</span> Tiêu chí đánh giá</div>
+          <div class="eval-checks">
+            <label for="evalResult">
+              <span class="eval-icon green" aria-hidden="true">✓</span>
+              <span class="eval-copy"
+                ><strong>Chương trình chạy đúng kết quả yêu cầu</strong
+                ><small
+                  >Chương trình cho ra kết quả đúng như đề bài.</small
+                ></span
+              >
+              <input type="checkbox" id="evalResult" />
+            </label>
+            <label for="evalInit">
+              <span class="eval-icon purple" aria-hidden="true">☼</span>
+              <span class="eval-copy"
+                ><strong>Khởi tạo</strong
+                ><small
+                  >Giải thích được vì sao bắt đầu từ giá trị đó.</small
+                ></span
+              >
+              <input type="checkbox" id="evalInit" />
+            </label>
+            <label for="evalCondition">
+              <span class="eval-icon blue" aria-hidden="true">⟳</span>
+              <span class="eval-copy"
+                ><strong>Điều kiện lặp</strong
+                ><small
+                  >Giải thích được vì sao điều kiện giúp in đủ các số theo yêu
+                  cầu.</small
+                ></span
+              >
+              <input type="checkbox" id="evalCondition" />
+            </label>
+            <label for="evalUpdate">
+              <span class="eval-icon orange" aria-hidden="true">↑</span>
+              <span class="eval-copy"
+                ><strong>Cập nhật</strong
+                ><small
+                  >Giải thích được vì sao cần tăng hoặc giảm biến đếm theo bước
+                  đó.</small
+                ></span
+              >
+              <input type="checkbox" id="evalUpdate" />
+            </label>
+          </div>
+          <button type="button" id="submitEvaluation">
+            ➤ &nbsp; GỬI ĐÁNH GIÁ
+          </button>
+          <div id="evaluationStatus" class="status" aria-live="polite"></div>
+          <div class="eval-foot">
+            ℹ️ &nbsp;Mỗi nhóm chỉ được ghi nhận một lần trong một vòng thi.
+          </div>
+        </section>
+        <div class="hint">
+          Chọn đúng dãy và nhóm của mình trước khi tham gia hoạt động.
+        </div>
+      </section>
+    </main>
+    <canvas id="fireworksCanvas"></canvas>
+    <script type="module">
+      import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+      import { SUPABASE_URL, SUPABASE_ANON_KEY } from "./config.js";
+      const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      const $ = (id) => document.getElementById(id);
+
+      let evaluationVisibilityChannel = null;
+      function setEvaluationVisible(visible) {
+        $("evaluationForm")?.classList.toggle("is-visible", Boolean(visible));
+      }
+      async function syncEvaluationVisibility() {
+        const roomCode = $("roomCode").value.trim().toUpperCase();
+        if (evaluationVisibilityChannel) {
+          await supabase.removeChannel(evaluationVisibilityChannel);
+          evaluationVisibilityChannel = null;
+        }
+        setEvaluationVisible(false);
+        if (!roomCode) return;
+
+        const { data, error } = await supabase
+          .from("buzz_room_settings")
+          .select("evaluation_visible")
+          .eq("room_code", roomCode)
+          .maybeSingle();
+        if (error) {
+          console.error("Không tải được trạng thái form đánh giá:", error);
+          return;
+        }
+        setEvaluationVisible(data?.evaluation_visible ?? false);
+
+        evaluationVisibilityChannel = supabase
+          .channel("student-evaluation-visibility-" + roomCode)
+          .on(
+            "postgres_changes",
+            {
+              event: "*",
+              schema: "public",
+              table: "buzz_room_settings",
+              filter: `room_code=eq.${roomCode}`,
+            },
+            (payload) => {
+              setEvaluationVisible(payload.new?.evaluation_visible ?? false);
+            },
+          )
+          .subscribe();
+      }
+
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+      import {
+        getFirestore,
+        collection,
+        addDoc,
+        serverTimestamp,
+        doc,
+        getDoc,
+        setDoc,
+      } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+      import { firebaseConfig } from "./firebase-config.js";
+
+      const firebaseApp = initializeApp(firebaseConfig);
+      const db = getFirestore(firebaseApp);
+
+      // HIỆU ỨNG PHÁO HOA
+      const fireworksCanvas = $("fireworksCanvas");
+      const fireworksCtx = fireworksCanvas.getContext("2d");
+      let fireworks = [];
+      let fireworksAnimation = null;
+
+      function resizeFireworksCanvas() {
+        const dpr = window.devicePixelRatio || 1;
+        fireworksCanvas.width = window.innerWidth * dpr;
+        fireworksCanvas.height = window.innerHeight * dpr;
+        fireworksCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      }
+      window.addEventListener("resize", resizeFireworksCanvas);
+      resizeFireworksCanvas();
+
+      function createFirework(x, y) {
+        const colors = [
+          "#ff4757",
+          "#ffa502",
+          "#2ed573",
+          "#1e90ff",
+          "#e056fd",
+          "#ffffff",
+          "#ffe66d",
+        ];
+        const color = colors[Math.floor(Math.random() * colors.length)];
+        const particleCount = 65;
+        for (let i = 0; i < particleCount; i++) {
+          const angle = (Math.PI * 2 * i) / particleCount;
+          const speed = 2 + Math.random() * 5;
+          fireworks.push({
+            x,
+            y,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
+            life: 1,
+            decay: 0.012 + Math.random() * 0.015,
+            radius: 2 + Math.random() * 2.5,
+            color,
+          });
+        }
+      }
+      function animateFireworks() {
+        fireworksCtx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+        fireworks = fireworks.filter((p) => p.life > 0);
+        fireworks.forEach((p) => {
+          p.x += p.vx;
+          p.y += p.vy;
+          p.vx *= 0.985;
+          p.vy *= 0.985;
+          p.vy += 0.035;
+          p.life -= p.decay;
+          fireworksCtx.globalAlpha = Math.max(0, p.life);
+          fireworksCtx.fillStyle = p.color;
+          fireworksCtx.beginPath();
+          fireworksCtx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+          fireworksCtx.fill();
+        });
+        fireworksCtx.globalAlpha = 1;
+        if (fireworks.length > 0)
+          fireworksAnimation = requestAnimationFrame(animateFireworks);
+        else {
+          fireworksCtx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+          fireworksAnimation = null;
+        }
+      }
+      function launchFireworks() {
+        if (fireworksAnimation !== null) {
+          cancelAnimationFrame(fireworksAnimation);
+          fireworksAnimation = null;
+        }
+        const width = window.innerWidth,
+          height = window.innerHeight;
+        createFirework(width * 0.25, height * 0.35);
+        createFirework(width * 0.5, height * 0.25);
+        createFirework(width * 0.75, height * 0.35);
+        animateFireworks();
+        setTimeout(() => {
+          createFirework(
+            width * (0.3 + Math.random() * 0.4),
+            height * (0.2 + Math.random() * 0.25),
+          );
+          if (fireworksAnimation === null) animateFireworks();
+        }, 250);
+      }
+
+      let lane = 1,
+        team = 1,
+        activeRound = null,
+        alreadyBuzzed = false,
+        submissionReady = false,
+        submissionBusy = false,
+        currentSubmissionKey = null;
+      $("buzzBtn").disabled = true;
+
+      function selectedGroup() {
+        return laneGroups[lane]?.[team - 1] ?? null;
+      }
+      function submissionStatus(message, type = "") {
+        const el = $("submissionStatus");
+        el.textContent = message;
+        el.className = "submission-status " + type;
+      }
+      function setSubmissionReady(ready) {
+        submissionReady = Boolean(ready);
+        $("buzzBtn").disabled = !submissionReady || alreadyBuzzed;
+      }
+      async function refreshSubmissionState() {
+        const room = $("roomCode").value.trim().toUpperCase();
+        const group = selectedGroup();
+        setSubmissionReady(false);
+        currentSubmissionKey = null;
+        if (!room || !group) {
+          submissionStatus("Nhập mã phòng và chọn nhóm để kiểm tra bài nộp.");
+          return;
+        }
+        try {
+          const round = await getActiveRound(room);
+          if (!round) {
+            submissionStatus(
+              "Chưa có vòng thi đang mở. Hãy báo giáo viên mở vòng mới.",
+              "err",
+            );
+            return;
+          }
+          const key = `${round.id}_${group}`;
+          currentSubmissionKey = key;
+          const saved = await getDoc(doc(db, "group_submissions", key));
+          // Bỏ qua kết quả cũ nếu học sinh vừa đổi nhóm/phòng trong lúc đang tải.
+          if (
+            currentSubmissionKey !== key ||
+            room !== $("roomCode").value.trim().toUpperCase() ||
+            group !== selectedGroup()
+          )
+            return;
+          if (saved.exists()) {
+            const data = saved.data();
+            $("workAnswer").value = data.answerText || "";
+            $("workUrl").value = data.workUrl || "";
+            setSubmissionReady(true);
+            $("submitWorkBtn").disabled = true;
+            submissionStatus(
+              `Bài nộp của Nhóm ${group} đã được ghi nhận. Nút bấm chuông đã mở khóa.`,
+              "ok",
+            );
+          } else {
+            $("submitWorkBtn").disabled = false;
+            submissionStatus(
+              `Chưa có bài nộp cho Nhóm ${group} ở vòng thi này.`,
+            );
+          }
+        } catch (error) {
+          console.error("Không kiểm tra được bài nộp:", error);
+          submissionStatus(
+            "Không kiểm tra được bài nộp trên Firebase. Kiểm tra kết nối và Firestore Rules.",
+            "err",
+          );
+        }
+      }
+      const laneGroups = {
+        1: [1, 2, 3, 4, 5, 6],
+        2: [7, 8, 9, 10, 11, 12],
+        3: [13, 14, 15, 16],
+      };
+      function studentPair(group) {
+        return `${group * 2 - 1} và ${group * 2}`;
+      }
+
+      function renderTeams() {
+        const teamSelect = $("teamSelect");
+        const groups = laneGroups[lane];
+        if (!groups.some((group, index) => index + 1 === team)) team = 1;
+        teamSelect.innerHTML = "";
+        groups.forEach((group, index) => {
+          const slot = index + 1;
+          const option = document.createElement("option");
+          option.value = String(slot);
+          option.textContent = `Nhóm ${group} · Học sinh ${studentPair(group)}`;
+          teamSelect.appendChild(option);
+        });
+        teamSelect.value = String(team);
+        teamSelect.disabled = alreadyBuzzed;
+      }
+      $("laneSelect").addEventListener("change", () => {
+        if (alreadyBuzzed) return;
+        lane = Number($("laneSelect").value);
+        team = 1;
+        renderTeams();
+        refreshSubmissionState().catch(console.error);
+      });
+      $("teamSelect").addEventListener("change", () => {
+        if (alreadyBuzzed) return;
+        team = Number($("teamSelect").value);
+        refreshSubmissionState().catch(console.error);
+      });
+      renderTeams();
+      function status(msg, type = "") {
+        $("status").textContent = msg;
+        $("status").className = "status " + type;
+      }
+      async function getActiveRound(room) {
+        const { data, error } = await supabase
+          .from("buzz_rounds")
+          .select("id,room_code,is_open,created_at")
+          .eq("room_code", room)
+          .eq("is_open", true)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (error) throw error;
+        return data;
+      }
+      $("submitWorkBtn").onclick = async () => {
+        if (submissionBusy) return;
+        const room = $("roomCode").value.trim().toUpperCase();
+        const group = selectedGroup();
+        const answerText = $("workAnswer").value.trim();
+        const workUrl = $("workUrl").value.trim();
+        if (!room) {
+          submissionStatus("Vui lòng nhập mã lớp / mã phòng.", "err");
+          $("roomCode").focus();
+          return;
+        }
+        if (!answerText) {
+          submissionStatus("Vui lòng nhập câu trả lời trước khi nộp.", "err");
+          $("workAnswer").focus();
+          return;
+        }
+        if (!workUrl) {
+          submissionStatus("Vui lòng dán URL bài làm trước khi nộp.", "err");
+          $("workUrl").focus();
+          return;
+        }
+        try {
+          const parsed = new URL(workUrl);
+          if (!["http:", "https:"].includes(parsed.protocol))
+            throw new Error("invalid protocol");
+        } catch (_) {
+          submissionStatus(
+            "URL chưa hợp lệ. Hãy dán đường dẫn bắt đầu bằng https:// hoặc http://.",
+            "err",
+          );
+          $("workUrl").focus();
+          return;
+        }
+        submissionBusy = true;
+        $("submitWorkBtn").disabled = true;
+        submissionStatus("Đang lưu bài nộp...");
+        try {
+          const round = await getActiveRound(room);
+          if (!round)
+            throw new Error("Chưa có vòng thi đang mở. Hãy báo giáo viên.");
+          const key = `${round.id}_${group}`;
+          const ref = doc(db, "group_submissions", key);
+          const existing = await getDoc(ref);
+          if (existing.exists()) {
+            $("workAnswer").value = existing.data().answerText || "";
+            $("workUrl").value = existing.data().workUrl || "";
+            currentSubmissionKey = key;
+            setSubmissionReady(true);
+            submissionStatus(
+              `Nhóm ${group} đã nộp bài ở vòng này trước đó. Nút bấm chuông đã mở khóa.`,
+              "ok",
+            );
+            return;
+          }
+          await setDoc(ref, {
+            roomCode: room,
+            roundId: String(round.id),
+            group,
+            lane,
+            answerText,
+            workUrl,
+            submittedAt: serverTimestamp(),
+          });
+          currentSubmissionKey = key;
+          setSubmissionReady(true);
+          submissionStatus(
+            `Nộp bài thành công cho Nhóm ${group}! Bây giờ bạn có thể bấm chuông.`,
+            "ok",
+          );
+        } catch (error) {
+          console.error("Lỗi nộp bài:", error);
+          setSubmissionReady(false);
+          submissionStatus(
+            "Không nộp được bài: " +
+              (error.message || "Lỗi Firebase. Kiểm tra Firestore Rules."),
+            "err",
+          );
+          $("submitWorkBtn").disabled = false;
+        } finally {
+          submissionBusy = false;
+        }
+      };
+
+      $("buzzBtn").onclick = async () => {
+        if (alreadyBuzzed) return;
+        if (!submissionReady) {
+          status("Bạn cần nộp bài thành công trước khi bấm chuông.", "err");
+          $("workAnswer").focus();
+          return;
+        }
+        const room = $("roomCode").value.trim().toUpperCase();
+        if (!room) {
+          status("Vui lòng nhập mã lớp / mã phòng.", "err");
+          $("roomCode").focus();
+          return;
+        }
+        if (
+          !SUPABASE_URL.startsWith("http") ||
+          SUPABASE_ANON_KEY.includes("YOUR_")
+        ) {
+          status(
+            "Cô cần điền thông tin Supabase trong file config.js trước.",
+            "err",
+          );
+          return;
+        }
+        $("buzzBtn").disabled = true;
+        status("Đang gửi tín hiệu…");
+        try {
+          const round = await getActiveRound(room);
+          if (!round) {
+            status(
+              "Hiện chưa mở vòng thi. Hãy báo giáo viên mở vòng mới.",
+              "err",
+            );
+            $("buzzBtn").disabled = false;
+            return;
+          }
+          const { error } = await supabase
+            .from("buzz_events")
+            .insert({ round_id: round.id, room_code: room, lane, team })
+            .select("id")
+            .single();
+          if (error) {
+            if (error.code === "23505") {
+              alreadyBuzzed = true;
+              $("laneSelect").disabled = true;
+              $("teamSelect").disabled = true;
+              const actualTeam = laneGroups[lane][team - 1];
+              status(
+                `Dãy ${lane} · Nhóm ${actualTeam} đã bấm chuông trong vòng này.`,
+                "ok",
+              );
+              $("buzzBtn").textContent = "✓ ĐÃ GHI NHẬN";
+              return;
+            }
+            throw error;
+          }
+          alreadyBuzzed = true;
+          $("laneSelect").disabled = true;
+          $("teamSelect").disabled = true;
+          document
+            .querySelectorAll(".choice")
+            .forEach((b) => (b.disabled = true));
+          $("buzzBtn").textContent = "✓ ĐÃ GHI NHẬN";
+          const actualTeam = laneGroups[lane][team - 1];
+          status(`🎉 Đã ghi nhận! Dãy ${lane} · Nhóm ${actualTeam}.`, "ok");
+          launchFireworks();
+        } catch (e) {
+          console.error(e);
+          status(
+            "Không gửi được tín hiệu. Kiểm tra kết nối hoặc báo giáo viên.",
+            "err",
+          );
+          $("buzzBtn").disabled = false;
+        }
+      };
+
+      $("roomCode").addEventListener("change", () => {
+        syncEvaluationVisibility().catch(console.error);
+        refreshSubmissionState().catch(console.error);
+      });
+      $("roomCode").addEventListener("blur", () => {
+        syncEvaluationVisibility().catch(console.error);
+        refreshSubmissionState().catch(console.error);
+      });
+      // Form đánh giá mặc định ẩn; chỉ hiện khi giáo viên bật trong dashboard.
+      syncEvaluationVisibility().catch(console.error);
+      refreshSubmissionState().catch(console.error);
+
+      const presentingSelect = $("presentingGroup");
+      const submitEvaluationBtn = $("submitEvaluation");
+      for (let group = 1; group <= 16; group++) {
+        const option = document.createElement("option");
+        option.value = String(group);
+        option.textContent = `Nhóm ${group}`;
+        presentingSelect.appendChild(option);
+      }
+      function evaluationStatus(message, type = "") {
+        const el = $("evaluationStatus");
+        el.textContent = message;
+        el.className = "status " + type;
+      }
+      submitEvaluationBtn.onclick = async () => {
+        const room = $("roomCode").value.trim().toUpperCase();
+        const presentingGroup = Number(presentingSelect.value);
+        const evaluatingGroup = laneGroups[lane][team - 1];
+
+        if (!room) {
+          evaluationStatus("Vui lòng nhập mã lớp / mã phòng.", "err");
+          return;
+        }
+        if (!presentingGroup) {
+          evaluationStatus("Vui lòng chọn nhóm đang trình bày.", "err");
+          return;
+        }
+        if (presentingGroup === evaluatingGroup) {
+          evaluationStatus("Không thể đánh giá chính nhóm mình.", "err");
+          return;
+        }
+
+        const criteria = {
+          correctResult: $("evalResult").checked,
+          initialization: $("evalInit").checked,
+          loopCondition: $("evalCondition").checked,
+          updateStep: $("evalUpdate").checked,
+        };
+        if (!Object.values(criteria).some(Boolean)) {
+          evaluationStatus("Vui lòng chọn ít nhất một tiêu chí.", "err");
+          return;
+        }
+
+        submitEvaluationBtn.disabled = true;
+        evaluationStatus("Đang lưu đánh giá...");
+        try {
+          const round = await getActiveRound(room);
+          if (!round) {
+            evaluationStatus(
+              "Chưa có vòng thi đang mở. Hãy báo giáo viên.",
+              "err",
+            );
+            return;
+          }
+          await addDoc(collection(db, "peer_evaluations"), {
+            roomCode: room,
+            roundId: round.id,
+            evaluatingGroup,
+            presentingGroup,
+            criteria,
+            createdAt: serverTimestamp(),
+          });
+          evaluationStatus(
+            `Đã gửi đánh giá Nhóm ${presentingGroup} thành công!`,
+            "ok",
+          );
+          presentingSelect.value = "";
+          ["evalResult", "evalInit", "evalCondition", "evalUpdate"].forEach(
+            (id) => ($(id).checked = false),
+          );
+        } catch (error) {
+          console.error("Lỗi lưu đánh giá:", error);
+          evaluationStatus("Không lưu được đánh giá. Vui lòng thử lại.", "err");
+        } finally {
+          submitEvaluationBtn.disabled = false;
+        }
+      };
+    </script>
+  </body>
+</html>
